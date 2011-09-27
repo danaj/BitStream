@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Test::More;
+use List::Util qw(shuffle);
+use lib qw(t/lib BitStream/t/lib);
+use BitStreamTest;
+
+my @implementations = impl_list;
+my @encodings       = encoding_list;
+plan tests =>   (scalar @implementations) * 1;
+
+foreach my $type (@implementations) {
+
+  srand(10);
+
+  {
+    my @data;
+    foreach my $encoding (@encodings) {
+      my $maxval = (is_universal($encoding)) ? 100_000_000 : 1000;
+      push @data, [$encoding, int(rand($maxval))]   for (1 .. 100);
+    }
+    @data = shuffle @data;
+    # we're encoding a lot of random valus, each using a different coding
+    # method.  We should be be able to successfully retrieve them all.
+    my $nvalues = scalar @data;
+    my $stream = stream_encode_mixed($type, @data);
+    my $success = stream_decode_mixed($stream, @data);
+    ok($success, "$type: mixed coding with $nvalues values");
+  }
+
+  # test each parameter for parameterized codes
+}
+
+done_testing();

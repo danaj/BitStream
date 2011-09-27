@@ -1,0 +1,41 @@
+
+- README
+
+- Changes
+
+- tests for invalid behavior
+- tests for consistent die return strings
+
+- Verify on 32-bit machine
+- Verify on BE machine
+
+- POD documentation
+
+- Export
+
+- XS code.  Really we want to either a speedup of vec routines,
+  basically like Scalar::Vec::Util to add big-endian help, or
+  go all out and write something that makes a SV string with all
+  our methods supported.
+
+- Also see SWF::BinStream.  It has a few similarities, but lots
+  of differences.
+
+
+CODE:
+
+- POD documentation
+
+- clean up Fibonacci text
+
+- Ternary Comma
+
+- Fenwick punctured codes
+
+- Goldbach and Ulam additive codes.  Probably not efficient
+  for anything large.
+
+- Thoughts on Huffman, arithmetic
+
+------
+PERLLIB='lib/' perl t/01-load.t

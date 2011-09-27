@@ -1,0 +1,16 @@
+Revision history for Perl extension Data::BitStream.
+
+0.01  Mon Sep 26 10:12:53 2011
+	- original version; created by h2xs 1.23 with options
+		-XAn Data::BitStream
+
+	- 24 Sep 2011, add Boldi-Vigna Zeta, Levenstein Codes, and Baer codes
+	- 19 Sep 2011, make Golomb take a sub, better default impls
+	- 14 Sep 2011, add skip(), optimizations
+	- 13 Sep 2011, more tests, harden the reader/writer distinction
+	- 12 Sep 2011, add Delta and Omega
+	- 11 Sep 2011, add ExpGolomb, and fix readahead
+	- 9 Sep 2011, split into Base/impls/codes, first unit tests,
+		add Fibonacci, Golomb, and Rice encoding.
+	- 8 Sep 2011, Vec and BitVec code, with Gamma and GG3
+	- 24 Aug 2011, first Perl version, Unary
