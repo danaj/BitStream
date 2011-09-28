@@ -1,65 +1,118 @@
 package Data::BitStream::Code::ExponentialGolomb;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::ExponentialGolomb::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::Code::ExponentialGolomb::VERSION = '0.01';
+  $Data::BitStream::Code::ExponentialGolomb::VERSION = '0.02';
 }
 
 use Mouse::Role;
+requires qw(put_rice put_gamma get_rice get_gamma);
 
-requires 'read', 'write', 'put_gamma', 'get_gamma';
-
-# The more generic version of this is GammaGolomb, which takes a parameter M
-# that indicates the base.  It is basically Golomb codes using Gamma instead
-# of Unary to encode the quotient.
+# Basic put implementation:
 #
-# This version is to GammaGolomb as Rice is to Golomb.  It takes a parameter k
-# where m=2^k.  So:
+#   my $k = shift;
+#   foreach my $val (@_) {
+#     $self->put_gamma($val >> $k);
+#     $self->write($k, $val);
+#   }
 #
-#        ExponentialGolomb(k)  <=>  GammaGolomb(2^k)
-#                     Rice(k)  <=>  Golomb(2^k)
-#
-# The simplified versions are provided partly for efficiency, but mostly
-# because they are more commonly used.
 
 sub put_expgolomb {
   my $self = shift;
-  my $k = shift;
-  die "k must be >= 0" unless $k >= 0;
-
-  return $self->put_gamma(@_) if $k == 0;
-
-  foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
-    my $q = $val >> $k;
-    my $r = $val - ($q << $k);
-    $self->put_gamma($q);
-    $self->write($k, $r);
-  }
-  1;
+  $self->put_rice( sub { shift->put_gamma(@_); }, @_ );
 }
+
 sub get_expgolomb {
   my $self = shift;
-  my $k = shift;
-  die "k must be >= 0" unless $k >= 0;
-  return $self->get_gamma(@_) if $k == 0;
-  my $count = shift;
-  if    (!defined $count) { $count = 1;  }
-  elsif ($count  < 0)     { $count = ~0; }   # Get everything
-  elsif ($count == 0)     { return;      }
-
-  my @vals;
-  while ($count-- > 0) {
-    my $val = $self->get_gamma();
-    last unless defined $val;
-    if ($k > 0) {
-      $val <<= $k;
-      $val += $self->read($k);
-    }
-    push @vals, $val;
-  }
-  wantarray ? @vals : $vals[-1];
+  $self->get_rice( sub { shift->get_gamma(@_); }, @_ );
 }
+
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Exponential Golomb codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::ExponentialGolomb - A Role implementing Exponential Golomb codes
+
+=head1 VERSION
+
+version 0.01
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+Exponential Golomb codes.  The role applies to a stream object.
+
+An Exp-Golomb code is just a Rice code using Elias Gamma codes instead of
+a Unary code to encode the upper bits.  Rice codes in turn are Golomb codes
+where the parameter m is a power of two.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_expgolomb($k, $value) >
+
+=item B< put_expgolomb($k, @values) >
+
+Insert one or more values as Exponential Golomb codes.  Returns 1.
+
+=item B< get_expgolomb($k) >
+
+=item B< get_expgolomb($k, $count) >
+
+Decode one or more Exponential Golomb codes from the stream.  If count is
+omitted, one value will be read.  If count is negative, values will be read
+until the end of the stream is reached.  In scalar context it returns the
+last code read; in array context it returns an array of all codes read.
+
+=back
+
+=head2 Parameters
+
+The parameter k must be an integer 0 or higher.
+
+=head2 Required Methods
+
+=over 4
+
+=item B< get_gamma >
+
+=item B< get_rice >
+
+=item B< put_gamma >
+
+=item B< put_rice >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<http://en.wikipedia.org/wiki/Exponential-Golomb_coding>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
