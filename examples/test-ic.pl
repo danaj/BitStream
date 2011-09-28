@@ -1,16 +1,18 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use lib qw(../lib ../t/lib);
-use Data::BitStream;
-
-eval "require 'integercoding.pl'";
 
 $| = 1;  # fast pipes
+
+# Load up the integercoding.pl routines, ignore the program
+eval {require 'integercoding.pl'; };
+
+use lib qw(../lib ../t/lib);
+use Data::BitStream;
 my $stream = Data::BitStream->new();
 
-my $ntest = 10_000;
-my $nrand = 40_000;
+my $ntest = 4095;
+my $nrand = 16_000;
 
 if (1) {
 print "Unary...";
@@ -34,7 +36,7 @@ srand(101);
 print "Random gamma/delta/omega/fib..";
 foreach my $i (1 .. $nrand) {
   print "." if $i % int($nrand/30) == 0;
-  my $n = int(rand(10_000_000_000));
+  my $n = int(rand( (~0 > 0xFFFFFFFF) ? 10_000_000_000 : 1_000_000_000 ));
   test_gamma($n);
   test_delta($n);
   test_omega($n);

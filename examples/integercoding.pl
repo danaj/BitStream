@@ -32,6 +32,7 @@ die_usage unless defined $sub;
 
 while (<STDIN>) {
   chomp;
+  next unless /^\s*\d+\s*$/;   # Ignore all non-digit input
   die "Must have a binary string for decoding"
       if (defined $dmethod) && (length($_) == 0 or $_ =~ /[^01]/);
   print $sub->($_), "\n";
@@ -40,10 +41,17 @@ while (<STDIN>) {
 
 
 # Helper functions
-# convert to/from decimal and BE binary, should work with 32- and 64-bit.
+# convert to/from decimal and BE binary, works with BE/LE, 32-/64-bit
 sub dec_to_bin {
-  my $v =  ($_[0] > 32)  ?  pack("Q", $_[1])  :  pack("L", $_[1]);
-  scalar reverse unpack("b$_[0]", $v);
+  my $bits = shift;
+  my $v = shift;
+  if ($bits > 32) {
+    # return substr(unpack("B64", pack("Q>", $v)), -$bits); # needs v5.9.2
+    return   substr(unpack("B32", pack("N", $v>>32)), -($bits-32))
+           . unpack("B32", pack("N", $v));
+  } else {
+    return scalar reverse unpack("b$bits", pack("V", $v));
+  }
 }
 sub bin_to_dec { no warnings 'portable'; oct '0b' . substr($_[1], 0, $_[0]); }
 sub base_of { my $d = shift; my $base = 0; $base++ while ($d >>= 1); $base; }
@@ -135,13 +143,14 @@ sub _calc_fibs {
     ($v2, $v1) = ($v1, $v2+$v1);
     push(@fibs, $v1);
   }
+  die unless defined $fibs[41];  # needed below
 }
 sub encode_fib {
   my $d = shift;
   die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
   _calc_fibs unless defined $fibs[0];
   # Find the largest F(s) bigger than $n
-  my $s =  ($d < $fibs[30])  ?  0  :  ($d < $fibs[60])  ?  31  :  61;
+  my $s =  ($d < $fibs[20])  ?  0  :  ($d < $fibs[40])  ?  21  :  41;
   $s++ while ($d >= $fibs[$s]);
   my $r = '1';
   while ($s-- > 0) {
