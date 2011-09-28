@@ -74,7 +74,7 @@ sub get_golomb {
   }
   die "m must be >= 1" unless $m >= 1;
 
-  return( (defined $sub) ? $sub->($self, @_) : $self->put_unary(@_) ) if $m==1;
+  return( (defined $sub) ? $sub->($self, @_) : $self->get_unary(@_) ) if $m==1;
   my $b = 1;
   { my $v = $m-1;  $b++ while ($v >>= 1); }   # $b is ceil(log2($m))
   my $threshold = (1 << $b) - $m;             # will be 0 if m is a power of 2
