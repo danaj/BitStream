@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Baer;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Baer::AUTHORITY = 'cpan:DANAJ';
 }
@@ -7,13 +9,11 @@ BEGIN {
 }
 
 use Mouse::Role;
-
 requires 'read', 'write', 'put_unary', 'get_unary';
 
 # Baer codes.
 #
 # Used for efficiently encoding data with a power law distribution.
-# Compare to the Boldi-Vigna Zeta codes.
 #
 # See:  Michael B. Baer, "Prefix Codes for Power Laws," in IEEE International Symposium on Information Theory 2008 (ISIT 2008), pp 2464-2468, Toronto ON.
 # https://hkn.eecs.berkeley.edu/~calbear/research/ISITuni.pdf
@@ -21,7 +21,7 @@ requires 'read', 'write', 'put_unary', 'get_unary';
 sub put_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if ($k > 32) || ($k < -32);
+  die "invalid parameters" if $k > 32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   foreach my $v (@_) {
@@ -32,11 +32,20 @@ sub put_baer {
     my $val = ($k==0)  ?  $v+1  :  ($k < 0)  ?  $v-$mk+1  :  1+($v>>$k);
     my $C = 0;
     my $postword = 0;
+
+    # This fixes range issues with k=0 and v=~0.  Run one cycle using v.
+    if ( ($k == 0) && ($v >= 3) ) {
+      if (($v & 1) == 0) { $val = ($v - 2) >> 1; $postword = 1; }
+      else               { $val = ($v - 1) >> 1; }
+      $C = 1;
+    }
+
     while ($val >= 4) {
       if (($val & 1) == 0) { $val = ($val - 2) >> 1; }
       else                 { $val = ($val - 3) >> 1; $postword |= (1 << $C); }
       $C++;
     }
+
     $self->put_unary1($C + $mk);
     if    ($val == 1) { $self->write(1, 0); }
     else              { $self->write(2, $val); }
@@ -49,7 +58,7 @@ sub put_baer {
 sub get_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if ($k > 32) || ($k < -32);
+  die "invalid parameters" if $k > 32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   my $count = shift;
@@ -78,3 +87,97 @@ sub get_baer {
 }
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Michael B. Baer's power law codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::Baer - A Role implementing Baer codes
+
+=head1 VERSION
+
+version 0.01
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+the power law codes of Michael B. Baer.  The role applies to a stream object.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_baer($k, $value) >
+
+=item B< put_baer($k, @values) >
+
+Insert one or more values as Baer c_k codes.  Returns 1.
+
+=item B< get_baer($k) >
+
+=item B< get_baer($k, $count) >
+
+Decode one or more Baer c_k codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=back
+
+=head2 Parameters
+
+The parameter k cannot be more than 32.
+
+C<k=0> is the base c_0 code.
+
+C<kE<lt>0> performs unary (1-based) coding of small values followed
+by c_0 coding the remainder (C<c_o(value+k)>) for large values.  This works well
+when the probability of small values is much higher than larger values.
+
+C<kE<gt>0> is similar to a Rice(k) code in that we encode
+C<c_o(valueE<gt>E<gt>k)> followed by encoding the bottom k bits of value.
+This works well when most values are medium-sized.
+
+Typical k values are between -6 and 6.
+
+=head2 Required Methods
+
+=over 4
+
+=item B< read >
+
+=item B< write >
+
+=item B< get_unary1 >
+
+=item B< put_unary1 >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item Michael B. Baer, "Prefix Codes for Power Laws," in IEEE International Symposium on Information Theory 2008 (ISIT 2008), pp 2464-2468, Toronto ON.
+
+=item L<https://hkn.eecs.berkeley.edu/~calbear/research/ISITuni.pdf>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
