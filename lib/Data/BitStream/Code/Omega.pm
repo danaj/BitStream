@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Omega;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Omega::AUTHORITY = 'cpan:DANAJ';
 }
@@ -7,7 +9,6 @@ BEGIN {
 }
 
 use Mouse::Role;
-
 requires 'read', 'write', 'skip';
 
 # Elias Omega code.

@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Gamma;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Gamma::AUTHORITY = 'cpan:DANAJ';
 }
@@ -7,8 +9,7 @@ BEGIN {
 }
 
 use Mouse::Role;
-
-requires 'maxbits', 'read', 'write', 'put_unary', 'get_unary';
+requires qw(maxbits read write put_unary get_unary);
 
 # Elias Gamma code.
 #
@@ -75,3 +76,86 @@ sub get_gamma {
 }
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Elias Gamma codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::Gamma - A Role implementing Elias Gamma codes
+
+=head1 VERSION
+
+version 0.01
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+the Elias Gamma codes.  The role applies to a stream object.
+
+This is a very common and very useful code, and is used to create some other
+codes (e.g. Elias Delta, Gamma-Golomb, and Exponential-Golomb).
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_gamma($value) >
+
+=item B< put_gamma(@values) >
+
+Insert one or more values as Gamma codes.  Returns 1.
+
+=item B< get_gamma() >
+
+=item B< get_gamma($count) >
+
+Decode one or more Gamma codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=back
+
+=head2 Required Methods
+
+=over 4
+
+=item B< maxbits >
+
+=item B< read >
+
+=item B< write >
+
+=item B< put_unary >
+
+=item B< get_unary >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item Peter Elias, "Universal codeword sets and representations of the integers", IEEE Trans. Information Theory 21(2), pp. 194-203, Mar 1975.
+
+=item Peter Fenwick, "Punctured Elias Codes for variable-length coding of the integers", Technical Report 137, Department of Computer Science, University of Auckland, December 1996
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

@@ -33,26 +33,29 @@ sub get_expgolomb {
 no Mouse;
 1;
 
-# ABSTRACT: A Role implementing Exponential Golomb codes
+# ABSTRACT: A Role implementing Exponential-Golomb codes
 
 =pod
 
 =head1 NAME
 
-Data::BitStream::Code::ExponentialGolomb - A Role implementing Exponential Golomb codes
+Data::BitStream::Code::ExponentialGolomb - A Role implementing Exponential-Golomb codes
 
 =head1 VERSION
 
-version 0.01
+version 0.02
 
 =head1 DESCRIPTION
 
 A role written for L<Data::BitStream> that provides get and set methods for
-Exponential Golomb codes.  The role applies to a stream object.
+Exponential-Golomb codes.  The role applies to a stream object.
 
-An Exp-Golomb code is just a Rice code using Elias Gamma codes instead of
-a Unary code to encode the upper bits.  Rice codes in turn are Golomb codes
-where the parameter m is a power of two.
+Exponential-Golomb codes are Rice codes using an Elias Gamma code instead of
+a Unary code for the upper bits.  Rice codes in turn are Golomb codes
+where the parameter m is a power of two.  Hence:
+
+               Rice(k)  ~  Golomb(2^k)
+  ExponentialGolomb(k)  ~  GammaGolomb(2^k)
 
 =head1 METHODS
 
@@ -64,13 +67,14 @@ where the parameter m is a power of two.
 
 =item B< put_expgolomb($k, @values) >
 
-Insert one or more values as Exponential Golomb codes.  Returns 1.
+Insert one or more values as Exponential-Golomb codes with parameter k.
+Returns 1.
 
 =item B< get_expgolomb($k) >
 
 =item B< get_expgolomb($k, $count) >
 
-Decode one or more Exponential Golomb codes from the stream.  If count is
+Decode one or more Exponential-Golomb codes from the stream.  If count is
 omitted, one value will be read.  If count is negative, values will be read
 until the end of the stream is reached.  In scalar context it returns the
 last code read; in array context it returns an array of all codes read.
@@ -79,19 +83,26 @@ last code read; in array context it returns an array of all codes read.
 
 =head2 Parameters
 
-The parameter k must be an integer 0 or higher.
+The parameter C<k> must be an integer greater than or equal to 0.
+
+The quotient C<value E<gt>E<gt> k> is encoded using an Elias Gamma code,
+followed by the lowest C<k> bits.
+
+Note: if C<k == 0> then the result will be coded purely using gamma coding.
+
+Note: this is a special case of a C<GammaGolomb(m)> code where C<m = 2^k>.
 
 =head2 Required Methods
 
 =over 4
 
-=item B< get_gamma >
-
-=item B< get_rice >
+=item B< put_rice >
 
 =item B< put_gamma >
 
-=item B< put_rice >
+=item B< get_rice >
+
+=item B< get_gamma >
 
 These methods are required for the role.
 
@@ -100,6 +111,12 @@ These methods are required for the role.
 =head1 SEE ALSO
 
 =over 4
+
+=item L<Data::BitStream::Code::Golomb>
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::GammaGolomb>
 
 =item L<http://en.wikipedia.org/wiki/Exponential-Golomb_coding>
 

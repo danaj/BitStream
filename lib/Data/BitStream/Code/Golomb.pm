@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Golomb;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Golomb::AUTHORITY = 'cpan:DANAJ';
 }
@@ -7,8 +9,7 @@ BEGIN {
 }
 
 use Mouse::Role;
-
-requires 'read', 'write', 'put_unary', 'get_unary';
+requires qw(read write put_unary get_unary);
 
 # Usage:
 #
@@ -104,3 +105,127 @@ sub get_golomb {
 }
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Golomb codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::Golomb - A Role implementing Golomb codes
+
+=head1 VERSION
+
+version 0.02
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+Golomb codes.  The role applies to a stream object.
+
+Beware that with the default unary coding for the quotient, these codes can
+become extraordinarily long for values much larger than C<m>.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_golomb($m, $value) >
+
+=item B< put_golomb($m, @values) >
+
+Insert one or more values as Golomb codes with parameter m.  Returns 1.
+
+=item B< put_golomb(sub { ... }, $m, @values) >
+
+Insert one or more values as Golomb codes using the user provided subroutine
+instead of the traditional Unary code for the base.  For example, the common
+Gamma-Golomb encoding can be performed using the sub:
+
+  sub { shift->put_gamma(@_); }
+
+=item B< get_golomb($m) >
+
+=item B< get_golomb($m, $count) >
+
+Decode one or more Golomb codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=item B< get_golomb(sub { ... }, $m) >
+
+Similar to the regular get method except using the user provided subroutine
+instead of unary encoding the base.  For example:
+
+  sub { shift->get_gamma(@_); }
+
+=back
+
+=head2 Parameters
+
+The parameter C<m> must be an integer greater than or equal to 1.
+
+The quotient of C<value / m> is encoded using unary (or via the user
+supplied subroutine), followed by the remainder in truncated binary form.
+
+Note: if C<m == 1> then the result will be coded purely using unary (or the
+supplied sub) coding.
+
+Note: if C<m> is a power of 2 (C<m = 2^k> for some non-negative integer
+C<k>), then the result is equal to the simpler C<Rice(k)> code, where the
+operations devolve into a shift and mask.
+
+For a general array of integers, the value of C<m> leading to the smallest sum
+of codes is approximately 0.69 * the average of the values. (citation needed)
+
+Golomb coding is often preceeded by a step that adapts the parameter to the
+data seen so far.
+
+=head2 Required Methods
+
+=over 4
+
+=item B< read >
+
+=item B< write >
+
+=item B< get_unary >
+
+=item B< put_unary >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::GammaGolomb>
+
+=item L<Data::BitStream::Code::ExponentialGolomb>
+
+=item L<http://en.wikipedia.org/wiki/Golomb_coding>
+
+=item S.W. Golomb, "Run-length encodings", IEEE Transactions on Information Theory, vol 12, no 3, pp 399-401, 1966.
+
+=item R.F. Rice and R. Plaunt, "Adaptive Variable-Length Coding for Efficient Compression of Spacecraft Television Data", IEEE Transactions on Communications, vol 16, no 9, pp 889-897, Dec. 1971.
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

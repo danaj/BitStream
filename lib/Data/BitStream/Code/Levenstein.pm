@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Levenstein;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Levenstein::AUTHORITY = 'cpan:DANAJ';
 }
@@ -14,12 +16,12 @@ sub _floorlog2_lev {
 }
 
 use Mouse::Role;
-
 requires qw(read write get_unary1 put_unary1);
 
 # Levenstein code (also called Levenshtein).
 #
-# Early variable length code (1968), rarely used.  Compares to Elias Omega.
+# Early variable length code (1968), rarely used.
+# Compares to Elias Omega and Even-Rodeh.
 #
 # See:  V.E. Levenstein, "On the Redundancy and Delay of Separable Codes for the Natural Numbers," in Problems of Cybernetics v. 20 (1968), pp 173-179.
 #
@@ -106,3 +108,83 @@ sub get_levenstein {
 }
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Levenstein codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::Levenstein - A Role implementing Levenstein codes
+
+=head1 VERSION
+
+version 0.01
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+the Levenstein codes.  The role applies to a stream object.
+
+These are also known as Levenshtein or Левенште́йн codes.  They are often used
+in situations where the Elias Omega, Even-Rodeh, or Fibonacci codes would be
+considered.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_levenstein($value) >
+
+=item B< put_levenstein(@values) >
+
+Insert one or more values as Levenstein codes.  Returns 1.
+
+=item B< get_levenstein() >
+
+=item B< get_levenstein($count) >
+
+Decode one or more Levenstein codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=back
+
+=head2 Required Methods
+
+=over 4
+
+=item B< read >
+
+=item B< write >
+
+=item B< get_unary1 >
+
+=item B< put_unary1 >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item V.E. Levenstein, "On the Redundancy and Delay of Separable Codes for the Natural Numbers," in Problems of Cybernetics v. 20 (1968), pp 173-179.
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
