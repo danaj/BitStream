@@ -47,7 +47,7 @@ sub impl_list {
   @ilist;
 }
   
-use Data::BitStream::Code::Flag;
+use Data::BitStream::Code::Escape;
 use Data::BitStream::Code::BoldiVigna;
 use Data::BitStream::Code::Baer;
 
@@ -57,7 +57,7 @@ sub new_stream {
   my $constructor = $stream_constructors{$type};
   die "Unknown stream type: $type" unless defined $constructor;
   my $stream = $constructor->();
-  Data::BitStream::Code::Flag->meta->apply($stream);
+  Data::BitStream::Code::Escape->meta->apply($stream);
   Data::BitStream::Code::BoldiVigna->meta->apply($stream);
   Data::BitStream::Code::Baer->meta->apply($stream);
   return $stream;
@@ -67,7 +67,7 @@ my $maxbits = Data::BitStream::String::maxbits();
 
 sub is_universal {
   my $enc = lc shift;
-  return 1 if $enc =~ /^(gamma|delta|omega|evenrodeh|fib|fibc2|flag|gg|eg|lev|bvzeta|baer)\b/;
+  return 1 if $enc =~ /^(gamma|delta|omega|evenrodeh|fib|fibc2|escape|gg|eg|lev|bvzeta|baer)\b/;
   return 1 if $enc =~ /^(delta|omega|fib|fibc2|er)gol\b/;
   return 1 if $enc =~ /^binword\($maxbits\)$/;
   return 0;
@@ -122,7 +122,7 @@ my %esubs = (
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->put_rice($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->put_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->put_startstop([split('-',$p)],@_) },
-  'flag'   => sub { my $stream=shift; my $p=shift; $stream->put_flag([split('-',$p)],@_) },
+  'escape' => sub { my $stream=shift; my $p=shift; $stream->put_escape([split('-',$p)],@_) },
 );
 my %dsubs = (
   # Universal
@@ -148,7 +148,7 @@ my %dsubs = (
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->get_rice($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->get_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->get_startstop([split('-',$p)],@_) },
-  'flag'   => sub { my $stream=shift; my $p=shift; $stream->get_flag([split('-',$p)],@_) },
+  'escape' => sub { my $stream=shift; my $p=shift; $stream->get_escape([split('-',$p)],@_) },
 );
 
 sub sub_for_string {
