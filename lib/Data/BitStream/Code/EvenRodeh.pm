@@ -15,15 +15,14 @@ sub _floorlog2_er {
   $base;
 }
 sub _dec_to_bin_er {
-  #my $v =  ($_[0] > 32)  ?  pack("Q", $_[1])  :  pack("L", $_[1]);
-  #scalar reverse unpack("b$_[0]", $v);
   my $bits = shift;
   my $val = shift;
   if ($bits > 32) {
     return   substr(unpack("B32", pack("N", $val>>32)), -($bits-32))
            . unpack("B32", pack("N", $val));
   } else {
-    return substr(unpack("B32", pack("N", $val)), -$bits);
+    #return substr(unpack("B32", pack("N", $val)), -$bits);
+    return scalar reverse unpack("b$bits", pack("V", $val));
   }
 }
 

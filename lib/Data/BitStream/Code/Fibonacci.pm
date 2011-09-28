@@ -37,6 +37,7 @@ my @fibs;
   }
   # @fibs is now (1, 2, 3, 5, 8, 13, ...)
 }
+die unless defined $fibs[41];  # we use this below
 
 # Since calculating the Fibonacci codes are relatively expensive, cache the
 # size and code for small values.
@@ -55,8 +56,7 @@ sub put_fib {
     }
 
     my $d = $val+1;
-    my $s = 0;
-    $s += 20 while (defined $fibs[$s+20] && $d >= $fibs[$s+20]);
+    my $s =  ($d < $fibs[20])  ?  0  :  ($d < $fibs[40])  ?  21  :  41;
     $s++ while ($d >= $fibs[$s]);
 
     # Generate 32-bit word directly if possible
@@ -151,8 +151,7 @@ sub get_fib {
 sub _encode_fib_c1 {
   my $d = shift;
   die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
-  my $s = 0;
-  $s += 20 while (defined $fibs[$s+20] && $d >= $fibs[$s+20]);
+  my $s =  ($d < $fibs[20])  ?  0  :  ($d < $fibs[40])  ?  21  :  41;
   $s++ while ($d >= $fibs[$s]);
   my $r = '1';
   while ($s-- > 0) {
