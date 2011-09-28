@@ -9,20 +9,24 @@ BEGIN {
 }
 
 use Mouse::Role;
-requires qw(read write put_unary get_unary maxbits);
+requires qw(read write put_unary get_unary maxbits get_gamma put_gamma);
 
 # Boldi-Vigna Zeta codes.
 
-# TODO: cache these
+# Holds cached calculated parameters for each k
+my @hp_cache;
+
+# Calculates parameters for a given k and maxbits.
 sub _hparam_map {
   my $k = shift;
   my $maxbits = shift;
 
-  my $maxhk = 0;
-  $maxhk += $k while ($maxhk+$k) < $maxbits;
+  my $maxh = 0;
+  $maxh++ while ($k * ($maxh+1)) < $maxbits;
+  my $maxhk = $maxh * $k;
 
   my @hparams;  # stores [s threshold] for each h
-  foreach my $h (0 .. $maxhk/$k) {
+  foreach my $h (0 .. $maxh) {
     my $hk = $h*$k;
     my $interval = (1 << ($hk+$k)) - (1 << $hk) - 1;
     my $z = $interval+1;
@@ -43,7 +47,13 @@ sub put_boldivigna {
 
   return $self->put_gamma(@_) if $k == 1;
 
-  my ($maxhk, $hparams) = _hparam_map($k, $self->maxbits);
+  my($maxhk, $hparams);
+  if (defined $hp_cache[$k]) {
+    ($maxhk, $hparams) = @{$hp_cache[$k]};
+  } else {
+    ($maxhk, $hparams) = _hparam_map($k, $self->maxbits);
+    $hp_cache[$k] = [$maxhk, $hparams];
+  }
 
   foreach my $v (@_) {
     die "Value must be >= 0" unless $v >= 0;
@@ -80,7 +90,13 @@ sub get_boldivigna {
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my ($maxhk, $hparams) = _hparam_map($k, $self->maxbits);
+  my($maxhk, $hparams);
+  if (defined $hp_cache[$k]) {
+    ($maxhk, $hparams) = @{$hp_cache[$k]};
+  } else {
+    ($maxhk, $hparams) = _hparam_map($k, $self->maxbits);
+    $hp_cache[$k] = [$maxhk, $hparams];
+  }
 
   my @vals;
   while ($count-- > 0) {
@@ -157,6 +173,8 @@ Typical k values are between 2 and 6.
 
 =over 4
 
+=item B< maxbits >
+
 =item B< read >
 
 =item B< write >
@@ -165,7 +183,9 @@ Typical k values are between 2 and 6.
 
 =item B< put_unary >
 
-=item B< maxbits >
+=item B< get_gamma >
+
+=item B< put_gamma >
 
 These methods are required for the role.
 
