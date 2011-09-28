@@ -1,8 +1,6 @@
 
 - README
 
-- Changes
-
 - tests for invalid behavior
 - tests for consistent die return strings
 
@@ -26,7 +24,7 @@ CODE:
 
 - POD documentation
 
-- clean up Fibonacci text
+- m > 2 Fibonacci codes
 
 - Ternary Comma
 

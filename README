@@ -25,13 +25,17 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  blah blah blah
+  Test::More
+  Mouse
+
+It works identically with Moose instead of Mouse, but it's almost 2x slower.
+
+I have tested this using perl versions 5.8.9, 5.10.1, 5.12.4, 5.14.1,
+and 5.15.2.
 
 COPYRIGHT AND LICENCE
 
-Put the correct copyright and licence information here.
-
-Copyright (C) 2011 by Dana A Jacobsen
+Copyright (C) 2011 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.1 or,
