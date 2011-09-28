@@ -17,7 +17,7 @@ sub new_stream {
 
 sub string_of {
   my $encoding = lc shift;
-  my $p = $1 if $encoding =~ s/\((.+)\)$//;
+  my $p;  $p = $1 if $encoding =~ s/\((.+)\)$//;
   my $d = shift;
   my $stream = new_stream;
   if    ($encoding eq 'unary')  { $stream->put_unary($d);    }

@@ -1,4 +1,6 @@
 package Data::BitStream::Code::Escape;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Escape::AUTHORITY = 'cpan:DANAJ';
 }
@@ -7,7 +9,6 @@ BEGIN {
 }
 
 use Mouse::Role;
-
 requires qw(read write maxbits);
 
 # Escape code.  Similar to Start/Stop codes, but rather than encoding the
