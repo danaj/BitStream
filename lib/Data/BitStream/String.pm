@@ -74,21 +74,23 @@ sub write {
 
   my $rstr = $self->_strref;
 
-  # The following is fastest on a LE machine:
+  # The following is typically fastest with 5.9.2 and later:
   #
-  #   my $packed_val = ($bits <= 32)  ?  pack("L", $val)  :  pack("Q", $val);
-  #   $$rstr .= scalar reverse unpack("b$bits", $packed_val);
+  #   $$rstr .= scalar reverse unpack("b$bits",($bits>32) ? pack("Q>",$val)
+  #                                                       : pack("V" ,$val));
   #
-  # With 5.9.2 and later, this will work:
+  # With 5.9.2 and later on a 64-bit machine, this will work quickly:
   #
-  #   $$rstr .= substr(unpack("B64", pack("Q>", $v)), -$bits);
+  #   $$rstr .= substr(unpack("B64", pack("Q>", $val)), -$bits);
   #
-  # This seems to be the most portable:
+  # This is the best compromise that works with 5.8.x, BE/LE, and 32-bit:
   if ($bits > 32) {
+    # $$rstr .= substr(unpack("B64", pack("Q>", $val)), -$bits); # needs v5.9.2
     $$rstr .=   substr(unpack("B32", pack("N", $val>>32)), -($bits-32))
               . unpack("B32", pack("N", $val));
   } else {
-    $$rstr .= substr(unpack("B32", pack("N", $val)), -$bits);
+    #$$rstr .= substr(unpack("B32", pack("N", $val)), -$bits);
+    $$rstr .= scalar reverse unpack("b$bits", pack("V", $val));
   }
 
   $self->_setlen( $self->len + $bits);
@@ -193,13 +195,11 @@ sub put_gamma {
       my $base = 0;
       { my $v = $val+1; $base++ while ($v >>= 1); }
       $vstr = '0' x $base . '1';
-      #my $packed_val = ($base <= 32)  ?  pack("L",$val+1)  :  pack("Q",$val+1);
-      #$vstr .= scalar reverse unpack("b$base", $packed_val);
       if ($base > 32) {
         $vstr .=   substr(unpack("B32", pack("N", ($val+1)>>32)), -($base-32))
-                 . unpack("B32", pack("N", $val+1));
+                  . unpack("B32", pack("N", $val+1));
       } else {
-        $vstr .= substr(unpack("B32", pack("N", $val+1)), -$base);
+        $vstr .= scalar reverse unpack("b$base", pack("V", $val+1));
       }
     }
     $$rstr .= $vstr;

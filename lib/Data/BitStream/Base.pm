@@ -107,8 +107,8 @@ sub put_unary {
 
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
-    $self->write(32, 0)  for (1 .. int($val/32));
-    $self->write(($val%32)+1, 1);
+    $self->write(32, 0)  for (1 .. ($val>>5));
+    $self->write(($val & 0x1F)+1, 1);
   }
   1;
 }
@@ -147,7 +147,7 @@ sub get_unary {            # You ought to override this.
       $val++;
       $word <<= 1;
     }
-    $self->skip(($val % 32) + 1);
+    $self->skip(($val & 0x1F) + 1);
 
     push @vals, $val;
   }
@@ -162,7 +162,7 @@ sub put_unary1 {
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
     my $nwords = $val >> 5;
-    my $nbits = $val % 32;
+    my $nbits = $val & 0x1F;
     $self->write(32, 0xFFFFFFFF)  for (1 .. $nwords);
     $self->write($nbits+1, 0xFFFFFFFE);
   }
@@ -203,7 +203,8 @@ sub get_unary1 {            # You ought to override this.
       $val++;
       $word <<= 1;
     }
-    $self->skip(($val % 32) + 1);
+    my $nbits = $val & 0x1F;
+    $self->skip($nbits + 1);
 
     push @vals, $val;
   }
@@ -369,23 +370,24 @@ sub _bin_to_dec {
   oct '0b' . substr($_[1], 0, $_[0]);
 }
 sub _dec_to_bin {
-  # The following is fastest on a LE machine:
+  # The following is typically fastest with 5.9.2 and later:
   #
-  #   my $v = ($_[0] > 32)  ?  pack("Q", $_[1])  :  pack("L", $_[1]);
-  #   scalar reverse unpack("b$_[0]", $v);
+  #   scalar reverse unpack("b$bits",($bits>32) ? pack("Q>",$v) : pack("V",$v));
   #
-  # With 5.9.2 and later, this will work:
+  # With 5.9.2 and later on a 64-bit machine, this will work quickly:
   #
-  #   substr(unpack("B64", pack("Q>", $_[1])), -$_[0]);
+  #   substr(unpack("B64", pack("Q>", $v)), -$bits);
   #
-  # This seems to be the most portable:
+  # This is the best compromise that works with 5.8.x, BE/LE, and 32-bit:
   my $bits = shift;
-  my $val = shift;
+  my $v = shift;
   if ($bits > 32) {
-    return   substr(unpack("B32", pack("N", $val>>32)), -($bits-32))
-           . unpack("B32", pack("N", $val));
+    # return substr(unpack("B64", pack("Q>", $v)), -$bits); # needs v5.9.2
+    return   substr(unpack("B32", pack("N", $v>>32)), -($bits-32))
+           . unpack("B32", pack("N", $v));
   } else {
-    return substr(unpack("B32", pack("N", $val)), -$bits);
+    # return substr(unpack("B32", pack("N", $v)), -$bits); # slower
+    return scalar reverse unpack("b$bits", pack("V", $v));
   }
 }
 

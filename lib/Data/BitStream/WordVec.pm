@@ -47,8 +47,8 @@ sub read {
   my $len = $self->len;
   return if $pos >= $len;
 
-  my $bpos = $pos % 32;
-  my $wpos = ($pos - $bpos) / 32;
+  my $wpos = $pos >> 5;       # / 32
+  my $bpos = $pos & 0x1F;     # % 32
   my $rvec = $self->_vecref;
   my $val = 0;
 
@@ -92,8 +92,8 @@ sub write {
 
   if ($val == 1) { $len += $bits-1; $bits = 1; } # optimize
 
-  my $bpos = $len % 32;
-  my $wpos = ($len - $bpos) / 32;
+  my $wpos = $len >> 5;       # / 32
+  my $bpos = $len & 0x1F;     # % 32
   my $rvec = $self->_vecref;
 
   while ($bits > 0) {
@@ -125,15 +125,13 @@ sub put_unary {
 
   foreach my $val (@_) {
     # We're writing $val 0's, so just skip them
-    my $pos = $len + $val;
-    my $bpos = $pos % 32;
+    $len += $val;
+    my $wpos = $len >> 5;      # / 32
+    my $bpos = $len & 0x1F;    # % 32
 
     # Write a 1 in the correct position
-    my $wpos = ($pos - $bpos) / 32;
-    my $v = vec($$rvec, $wpos, 32);
-    $v |= (1 << ((32-$bpos) - 1));
-    vec($$rvec, $wpos, 32) = $v;
-    $len += $val+1;
+    vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
+    $len++;
   }
 
   $self->_setlen( $len );
@@ -156,8 +154,8 @@ sub get_unary {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = $pos;
-    my $bpos = $pos % 32;
-    my $wpos = ($pos - $bpos) >> 5;
+    my $wpos = $pos >> 5;      # / 32
+    my $bpos = $pos & 0x1F;    # % 32
     my $v = 0;
     # Get the current word, shifted left so current position is leftmost.
     if ($bpos > 0) {
