@@ -1,4 +1,6 @@
 package Data::BitStream::WordVec;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Vec::AUTHORITY = 'cpan:DANAJ';
 }
@@ -43,7 +45,7 @@ sub read {
 
   my $pos = $self->pos;
   my $len = $self->len;
-  return undef if $pos >= $len;
+  return if $pos >= $len;
 
   my $bpos = $pos % 32;
   my $wpos = ($pos - $bpos) / 32;

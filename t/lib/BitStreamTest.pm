@@ -29,13 +29,13 @@ my %stream_constructors = (
 
 # Other implementations may or may not be available.
 # If they're not, we just won't test them.
-if (eval "require Data::BitStream::Vec") {
+if (eval {require Data::BitStream::Vec}) {
   $stream_constructors{'vector'} = sub { return Data::BitStream::Vec->new(); };
 }
-if (eval "require Data::BitStream::BitVec") {
+if (eval {require Data::BitStream::BitVec}) {
   $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
 }
-if (eval "require Data::BitStream::WordVec") {
+if (eval {require Data::BitStream::WordVec}) {
   $stream_constructors{'wordvec'} = sub {return Data::BitStream::WordVec->new();};
 }
 
@@ -163,9 +163,9 @@ sub stream_encode_array {
   my $encoding = shift;
 
   my $stream = new_stream($type);
-  return undef unless defined $stream;
+  return unless defined $stream;
   my ($esub, $dsub, $param) = sub_for_string($encoding);
-  return undef unless defined $esub;
+  return unless defined $esub;
 
   #foreach my $d (@_) { $esub->($stream, $param, $d); }
   $esub->($stream, $param, @_);
@@ -174,9 +174,9 @@ sub stream_encode_array {
 sub stream_decode_array {
   my $encoding = shift;
   my $stream = shift;
-  return undef unless defined $stream;
+  return unless defined $stream;
   my ($esub, $dsub, $param) = sub_for_string($encoding);
-  return undef unless defined $dsub;
+  return unless defined $dsub;
   $stream->rewind_for_read;
 
   if (wantarray) {
@@ -192,14 +192,14 @@ sub stream_encode_mixed {
   my $type = shift;
 
   my $stream = new_stream($type);
-  return undef unless defined $stream;
+  return unless defined $stream;
 
   foreach my $aref (@_) {
     my $estr = $aref->[0];
     my $d    = $aref->[1];
     die "Numbers must be >= 0" if $d < 0;
     my ($esub, $dsub, $param) = sub_for_string($estr);
-    return undef unless defined $esub;
+    return unless defined $esub;
     warn "Unary coding not recommended for large numbers ($d)"
          if $d > 100_000 and $estr =~ /^unary$/i;
     $esub->($stream, $param, $d);
@@ -209,14 +209,14 @@ sub stream_encode_mixed {
 
 sub stream_decode_mixed {
   my $stream = shift;
-  return undef unless defined $stream;
+  return unless defined $stream;
   $stream->rewind_for_read;
   foreach my $aref (@_) {
     my $estr = $aref->[0];
     my $d    = $aref->[1];
     die "Numbers must be >= 0" if $d < 0;
     my ($esub, $dsub, $param) = sub_for_string($estr);
-    return undef unless defined $dsub;
+    return unless defined $dsub;
     my $v = $dsub->($stream, $param);
     return 0 if $v != $d;
   }

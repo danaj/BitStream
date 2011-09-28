@@ -1,4 +1,6 @@
 package Data::BitStream::String;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::String::AUTHORITY = 'cpan:DANAJ';
 }
@@ -42,7 +44,7 @@ sub read {
 
   my $pos = $self->pos;
   my $len = $self->len;
-  return undef if $pos >= $len;
+  return if $pos >= $len;
 
   # What about reading past the end in this read?
   my $rstr = $self->_strref;
@@ -71,8 +73,23 @@ sub write {
   die "Undefined value" unless defined $val;
 
   my $rstr = $self->_strref;
-  my $packed_val = ($bits <= 32)  ?  pack("L", $val)  :  pack("Q", $val);
-  $$rstr .= scalar reverse unpack("b$bits", $packed_val);
+
+  # The following is fastest on a LE machine:
+  #
+  #   my $packed_val = ($bits <= 32)  ?  pack("L", $val)  :  pack("Q", $val);
+  #   $$rstr .= scalar reverse unpack("b$bits", $packed_val);
+  #
+  # With 5.9.2 and later, this will work:
+  #
+  #   $$rstr .= substr(unpack("B64", pack("Q>", $v)), -$bits);
+  #
+  # This seems to be the most portable:
+  if ($bits > 32) {
+    $$rstr .=   substr(unpack("B32", pack("N", $val>>32)), -($bits-32))
+              . unpack("B32", pack("N", $val));
+  } else {
+    $$rstr .= substr(unpack("B32", pack("N", $val)), -$bits);
+  }
 
   $self->_setlen( $self->len + $bits);
   1;
@@ -176,8 +193,14 @@ sub put_gamma {
       my $base = 0;
       { my $v = $val+1; $base++ while ($v >>= 1); }
       $vstr = '0' x $base . '1';
-      my $packed_val = ($base <= 32)  ?  pack("L",$val+1)  :  pack("Q",$val+1);
-      $vstr .= scalar reverse unpack("b$base", $packed_val);
+      #my $packed_val = ($base <= 32)  ?  pack("L",$val+1)  :  pack("Q",$val+1);
+      #$vstr .= scalar reverse unpack("b$base", $packed_val);
+      if ($base > 32) {
+        $vstr .=   substr(unpack("B32", pack("N", ($val+1)>>32)), -($base-32))
+                 . unpack("B32", pack("N", $val+1));
+      } else {
+        $vstr .= substr(unpack("B32", pack("N", $val+1)), -$base);
+      }
     }
     $$rstr .= $vstr;
     $len += length($vstr);

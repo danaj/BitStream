@@ -1,4 +1,6 @@
 package Data::BitStream::Base;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Base::AUTHORITY = 'cpan:DANAJ';
 }
@@ -25,8 +27,9 @@ has 'writing' => (is => 'ro', isa => 'Bool', writer => '_set_write', default => 
 
 {
   use Config;
-  my $mbits = ($Config{use64bitint} eq 'define' || $Config{longsize} >= 8)
-                 ?  64  :  32;
+  my $mbits = 32;
+  $mbits = 64 if defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define';
+  $mbits = 64 if defined $Config{'longsize'} && $Config{'longsize'} >= 8;
 
   sub maxbits { $mbits; }
 }
@@ -43,7 +46,7 @@ sub skip {
   my $skip = shift;
   my $pos = $self->pos;
   my $len = $self->len;
-  return undef if ($pos + $skip) > $len;
+  return 0 if ($pos + $skip) > $len;
   $self->_setpos($pos + $skip);
   1;
 }
@@ -270,7 +273,7 @@ sub read_string {
     $bits -= 32;
   }
   if ($bits > 0) {
-    $str .= scalar reverse unpack("b$bits", pack("L", $self->read($bits)));
+    $str .= substr(unpack("B32", pack("N", $self->read($bits))), -$bits);
   }
   $str;
 }
@@ -366,8 +369,24 @@ sub _bin_to_dec {
   oct '0b' . substr($_[1], 0, $_[0]);
 }
 sub _dec_to_bin {
-  my $v =  ($_[0] > 32)  ?  pack("Q", $_[1])  :  pack("L", $_[1]);
-  scalar reverse unpack("b$_[0]", $v);
+  # The following is fastest on a LE machine:
+  #
+  #   my $v = ($_[0] > 32)  ?  pack("Q", $_[1])  :  pack("L", $_[1]);
+  #   scalar reverse unpack("b$_[0]", $v);
+  #
+  # With 5.9.2 and later, this will work:
+  #
+  #   substr(unpack("B64", pack("Q>", $_[1])), -$_[0]);
+  #
+  # This seems to be the most portable:
+  my $bits = shift;
+  my $val = shift;
+  if ($bits > 32) {
+    return   substr(unpack("B32", pack("N", $val>>32)), -($bits-32))
+           . unpack("B32", pack("N", $val));
+  } else {
+    return substr(unpack("B32", pack("N", $val)), -$bits);
+  }
 }
 
 no Mouse;

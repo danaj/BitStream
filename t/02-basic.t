@@ -16,13 +16,13 @@ use Data::BitStream::String;
 my %stream_constructors = (
   'string', sub { return Data::BitStream::String->new(); },
 );
-if (eval "require Data::BitStream::Vec") {
+if (eval {require Data::BitStream::Vec}) {
   $stream_constructors{'vector'} = sub { return Data::BitStream::Vec->new(); };
 }
-if (eval "require Data::BitStream::BitVec") {
+if (eval {require Data::BitStream::BitVec}) {
   $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
 }
-if (eval "require Data::BitStream::WordVec") {
+if (eval {require Data::BitStream::WordVec}) {
   $stream_constructors{'wordvec'} = sub { return Data::BitStream::WordVec->new(); };
 }
 
@@ -31,11 +31,8 @@ sub new_stream {
   my $type = lc shift;
   $type =~ s/[^a-z]//g;
   my $constructor = $stream_constructors{$type};
-  if (defined $constructor) {
-    return $constructor->();
-  } else {
-    return undef;
-  }
+  return unless defined $constructor;
+  $constructor->();
 }
 
 sub test_type {
@@ -66,8 +63,9 @@ sub test_type {
   ok($status, "rewind");
 
   $v = $stream->read(4);
-  $status = $v == 0xD && !$stream->writing && $stream->len == 4 && $stream->pos == 4;
-  ok($status, "read");
+  is($v, 0xD, "read value correctly");
+  $status = !$stream->writing && $stream->len == 4 && $stream->pos == 4;
+  ok($status, "read status");
 
   $stream->rewind;
   $stream->write_open;
@@ -83,14 +81,15 @@ sub test_type {
   ok($status, "rewind for read");
 
   $v = $stream->readahead(2);
-  $status = $v == 3 && !$stream->writing && $stream->len == 9 && $stream->pos == 0;
-  ok($status, "readahead");
+  is($v, 3, "readahead value");
+  $status = !$stream->writing && $stream->len == 9 && $stream->pos == 0;
+  ok($status, "readahead status");
 
   # Unary is 000..1
   $v = $stream->read(9);
-  $status = ($v == 0x1A1)
-            && !$stream->writing && $stream->len == 9 && $stream->pos == 9;
-  ok($status, "read");
+  is($v, 0x1A1, "read value");
+  $status = !$stream->writing && $stream->len == 9 && $stream->pos == 9;
+  ok($status, "read status");
 
 
   $stream->erase_for_write;
@@ -105,9 +104,9 @@ sub test_type {
   ok($status, "rewind for read");
   # Unary1 is 111..0
   $v = $stream->get_unary1(-1);
-  $status = ($v == 7) 
-            && !$stream->writing && $stream->len == 8 && $stream->pos == 8;
-  ok($status, "read");
+  is($v, 7, "read value");
+  $status = !$stream->writing && $stream->len == 8 && $stream->pos == 8;
+  ok($status, "read status");
 
   $stream->erase_for_write;
   $status = $stream->writing && $stream->len == 0;
@@ -119,8 +118,9 @@ sub test_type {
 
   {
     my $str = $stream->to_string;
-    $status = ($str eq '0001110') && !$stream->writing && $stream->len == 7;
-    ok($status, "to string returned '0001110'");
+    is($str, '0001110', "to string returned '0001110'");
+    $status = !$stream->writing && $stream->len == 7;
+    ok($status, "to string status");
   }
 
   {
@@ -140,9 +140,9 @@ sub test_type {
 
   $stream->rewind_for_read;
   $v = $stream->get_gamma;
-  $status = ($v == 249)
-            && !$stream->writing && $stream->len == 15 && $stream->pos == 15;
-  ok($status, "read gamma returned 249");
+  is($v, 249, "read gamma returned 249");
+  $status = !$stream->writing && $stream->len == 15 && $stream->pos == 15;
+  ok($status, "read gamma status");
 
   {
     my $vec = '';
@@ -152,10 +152,11 @@ sub test_type {
     ok($status, "from raw 0xC5 (8)");
 
     $vec = $stream->to_raw;
-    $status = (length($vec) >= 1) && (length($vec) <= 4)
-              && (vec($vec,0,8) == 0xC5)
-              && !$stream->writing && $stream->len == 8;
-    ok($status, "to raw returned 0xC5 (8)");
+    cmp_ok( length($vec), '>=', 1, "to raw length is at least 1" );
+    cmp_ok( length($vec), '<=', 4, "to raw length is no more than 4");
+    is( vec($vec,0,8), 0xC5, "to raw returned 0xC5 (8)" );
+    $status = !$stream->writing && $stream->len == 8;
+    ok($status, "to raw status");
   }
 
   {

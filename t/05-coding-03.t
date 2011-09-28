@@ -26,7 +26,6 @@ sub test_encoding {
     my $stream = stream_encode_array($type, $encoding, 0);
     BAIL_OUT("No stream of type $type") unless defined $stream;
     my @v = stream_decode_array($encoding, $stream);
-    my $success = 1  if  (scalar @v == 1) && ($v[0] == 0);
-    ok($success, "$encoding stream 0 using $type");
+    ok( (scalar @v == 1) && ($v[0] == 0) , "$encoding stream 0 using $type");
   }
 }

@@ -1,4 +1,6 @@
 package Data::BitStream::BitVec;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::BitVec::AUTHORITY = 'cpan:DANAJ';
 }
@@ -22,6 +24,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::StartStop';
 
 use Bit::Vector;
+use 5.009_002;   # Using pack("Q<", $v) for big endian machines
 
 has '_vec' => (is => 'rw',
                isa => 'Bit::Vector',
@@ -47,17 +50,24 @@ sub read {
 
   my $pos = $self->pos;
   my $len = $self->len;
-  return undef if $pos >= $len;
+  return if $pos >= $len;
   my $vref = $self->_vec;
 
   my $val;
   if ($bits == 1) {
     $val = $vref->bit_test($pos);
   } else {
+    # Simple but slow code:
+    #   $val = 0;
+    #   foreach my $bit (0 .. $bits-1) {
+    #     last if $pos+$bit >= $len;
+    #     $val |= (1 << ($bits-$bit-1))  if $vref->bit_test($pos + $bit);
+    #   }
+    #
     # Read a chunk.  The returned value has the bits in LSB order.
     my $c = $vref->Chunk_Read($bits, $pos);
-    my $pstr = unpack("b$bits", ($bits > 32) ? pack("Q", $c) : pack("L", $c));
-    { no warnings 'portable';  $val = oct("0b$pstr"); }
+    my $pval = ($bits > 32) ? pack("Q<", $c) : pack("V", $c);
+    { no warnings 'portable';  $val = oct("0b" . unpack("b$bits", $pval)); }
   }
 
   $self->_setpos( $pos + $bits ) unless $peek;
@@ -95,8 +105,8 @@ sub write {
     #    $vref->Bit_On( $wpos - $bit )  if  (($val >> $bit) & 1);
     #  }
     # Alternate: reverse the bits of val and use efficient Chunk_Store
-    my $pstr=unpack("b$bits", ($bits > 32) ? pack("Q", $val) : pack("L", $val));
-    { no warnings 'portable';  $val = oct("0b$pstr"); }
+    my $pval = ($bits > 32) ? pack("Q<", $val) : pack("V", $val);
+    { no warnings 'portable';  $val = oct("0b" . unpack("b$bits", $pval)); }
     $vref->Chunk_Store($bits, $len, $val);
   }
 
