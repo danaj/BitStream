@@ -1,10 +1,15 @@
 package Data::BitStream::Code::Fibonacci;
+use strict;
+use warnings;
 BEGIN {
   $Data::BitStream::Code::Fibonacci::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::Code::Fibonacci::VERSION = '0.01';
+  $Data::BitStream::Code::Fibonacci::VERSION = '0.02';
 }
+
+use Mouse::Role;
+requires qw(write put_string get_unary read);
 
 # Fraenkel and Klein, 1996, C1 code.
 #
@@ -20,10 +25,6 @@ BEGIN {
 # Note that these are Fib_2 codes.  The concept can be generalized to Fib_m
 # where m >= 2.  In particular the m=3 and m=4 codes have proven useful in some
 # applications (see papers by Klein et al.).
-
-use Mouse::Role;
-
-requires qw(write put_string get_unary read);
 
 # Calculate Fibonacci numbers F[2]+ using simple forward calculation.
 # Generate enough so we can encode any integer from 0 - ~0.
@@ -54,7 +55,8 @@ sub put_fib {
     }
 
     my $d = $val+1;
-    my $s =  ($d < $fibs[30])  ?  0  :  ($d < $fibs[60])  ?  31  :  61;
+    my $s = 0;
+    $s += 20 while (defined $fibs[$s+20] && $d >= $fibs[$s+20]);
     $s++ while ($d >= $fibs[$s]);
 
     # Generate 32-bit word directly if possible
@@ -117,7 +119,7 @@ sub put_fib {
 #
 # Use readahead(8) and look up the result in a precreated array of all the
 # first 8 bit values mapped to the associated prefix code.  While this is
-# a neat idea, in practice it is slow.
+# a neat idea, in practice it is slow in this framework.
 #
 # Use readahead to read 32-bit chunks at a time and parse them here.
 
@@ -146,10 +148,11 @@ sub get_fib {
 
 # String functions
 
-sub encode_fib_c1 {
+sub _encode_fib_c1 {
   my $d = shift;
   die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
-  my $s =  ($d < $fibs[30])  ?  0  :  ($d < $fibs[60])  ?  31  :  61;
+  my $s = 0;
+  $s += 20 while (defined $fibs[$s+20] && $d >= $fibs[$s+20]);
   $s++ while ($d >= $fibs[$s]);
   my $r = '1';
   while ($s-- > 0) {
@@ -163,7 +166,7 @@ sub encode_fib_c1 {
   scalar reverse $r;
 }
 
-sub decode_fib_c1 {
+sub _decode_fib_c1 {
   my $str = shift;
   die "Invalid Fibonacci C1 code" unless $str =~ /^[01]*11$/;
   my $val = 0;
@@ -173,22 +176,22 @@ sub decode_fib_c1 {
   $val;
 }
 
-sub encode_fib_c2 {
+sub _encode_fib_c2 {
   my $d = shift;
   die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
   return '1' if $d == 1;
-  my $str = encode_fib_c1($d-1);
+  my $str = _encode_fib_c1($d-1);
   substr($str, -1, 1) = '';
   substr($str, 0, 0) = '10';
   $str;
 }
 
-sub decode_fib_c2 {
+sub _decode_fib_c2 {
   my $str = shift;
   return 1 if $str eq '1';
   die "Invalid Fibonacci C2 code" unless $str =~ /^10[01]*1$/;
   $str =~ s/^10//;
-  my $val = decode_fib_c1($str . '1') + 1;
+  my $val = _decode_fib_c1($str . '1') + 1;
   $val;
 }
 
@@ -197,7 +200,7 @@ sub put_fib_c2 {
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
-    $self->put_string(encode_fib_c2($val+1));
+    $self->put_string(_encode_fib_c2($val+1));
   }
   1;
 }
@@ -213,7 +216,7 @@ sub get_fib_c2 {
     my $str = '';
     if (0) {
       my $look = $self->read(8, 'readahead');
-      return undef unless defined $look;
+      last unless defined $look;
       if (($look & 0xC0) == 0xC0) { $self->skip(1); return 0; }
       if (($look & 0xF0) == 0xB0) { $self->skip(3); return 1; }
       if (($look & 0xF8) == 0x98) { $self->skip(4); return 2; }
@@ -232,9 +235,114 @@ sub get_fib_c2 {
       $str .= '0' x $skip . '1';
       $b2 = $self->read(1, 'readahead');
     }
-    push @vals, decode_fib_c2($str)-1;
+    push @vals, _decode_fib_c2($str)-1;
   }
   wantarray ? @vals : $vals[-1];
 }
 no Mouse;
 1;
+
+# ABSTRACT: A Role implementing Fibonacci codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::Fibonacci - A Role implementing Fibonacci codes
+
+=head1 VERSION
+
+version 0.02
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+the Fibonacci codes.  The role applies to a stream object.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_fib($value) >
+
+=item B< put_fib(@values) >
+
+Insert one or more values as Fibonacci C1 codes.  Returns 1.
+
+=item B< get_fib() >
+
+=item B< get_fib($count) >
+
+Decode one or more Fibonacci C1 codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=item B< put_fib_c2(@values) >
+
+Insert one or more values as Fibonacci C2 codes.  Returns 1.
+
+Note that the C2 codes are not prefix-free codes, so will not work well with
+other codes.  That is, these codes rely on the bit _after_ the code to be a 1
+(or the end of the stream).  Other codes may not meet this requirement.
+
+=item B< get_fib_c2() >
+
+=item B< get_fib_c2($count) >
+
+Decode one or more Fibonacci C2 codes from the stream.
+
+=back
+
+=head2 Required Methods
+
+=over 4
+
+=item B< read >
+
+=item B< write >
+
+=item B< get_unary >
+
+=item B< put_string >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item A.S. Fraenkel and S.T. Klein, "Robust Universal Complete Codes for Transmission and Compression", Discrete Applied Mathematics, Vol 64, pp 31-55, 1996.
+
+=item L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.3064>
+
+Introduces the order C<m=2> Fibonacci codes C1, C2, and C3.  The m=2 C1 codes
+are what most people call Fibonacci codes.
+
+=item L<http://en.wikipedia.org/wiki/Fibonacci_coding>
+
+A description of the C<m=2> C1 code.
+
+=item Shmuel T. Klein and Miri Kopel Ben-Nissan, "On the Usefulness of Fibonacci Compression Codes", The Computer Journal, Vol 53, pp 701-716, 2010.
+
+=item L<http://u.cs.biu.ac.il/~tomi/Postscripts/fib-rev.pdf>
+
+More information on Fibonacci codes, including C<mE<gt>2> codes.
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
