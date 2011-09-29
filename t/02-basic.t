@@ -91,6 +91,9 @@ sub test_type {
   $status = !$stream->writing && $stream->len == 9 && $stream->pos == 9;
   ok($status, "read status");
 
+  $stream->rewind_for_read;
+  $v = $stream->read_string(9);
+  is($v, '110100001', "read_string value");
 
   $stream->erase_for_write;
   $status = $stream->writing && $stream->len == 0;
