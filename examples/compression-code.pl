@@ -20,106 +20,40 @@ sub ceillog2 {
   $b;
 }
 
-#my @encodings = qw|unary gamma delta omega fib fibc2 gg(3) evenrodeh levenstein ss(0-2-7-99) deltagol(20) omegagol(20) fibgol(20) ergol(20) golomb(3) bvzeta(2) bvzeta(3) rice(2) rice(3) rice(4)|;
-#my @encodings = qw|gamma delta gg(11) eg(3)|;
-#my @encodings = qw|unary gamma delta omega fib|;
-#my @encodings = qw|fib fibc2|;
-#my @encodings = qw|unary|;
-#my @encodings = qw|sss(2-3-20) ss(0-1-3-5-12)|;
-my @encodings = qw|unary gamma omega levenstein ss(0-2-7) ss(0-1-2-6) ss(0-0-1-1-7) baer(-4)|;
+my @encodings = qw|
+  ss(0-2-7)
+  unary
+  ss(0-1-2-6)
+  omega
+  ss(0-0-1-1-7)
+  levenstein
+  gamma
+  baer(-4)
+|;
 
 # These files contain a lot of gamma encoded numbers generated from a
 # multidimensional prediction algorithm.  They should be between 0 and 510,
 # hence fit in 9 bits (generated from signed pixel differences).
-my $file = '3d-gamma.txt';
-#my $file = '4d-gamma.txt';
+my $file = '3d-gamma.raw';
+#my $file = '4d-gamma.raw';
 my @list;
 {
-  my $stream = Data::BitStream->new;
   open(my $fp, "<", $file) or die;
-  while (<$fp>) {
-    chomp;
-    next if /#/;
-    $stream->put_string($_);
-  }
+  my $bits = <$fp>;
+  my $rawdata = join('', <$fp>);
   close $fp;
+  my $stream = Data::BitStream->new;
+  $stream->from_raw($rawdata, $bits);
   $stream->rewind_for_read;
   @list = $stream->get_gamma(-1);
 }
 
 print "List holds ", scalar @list, " numbers\n";
 
-#@list = shuffle(@list);
 # average value
 my $avg = int( ((sum @list) / scalar @list) + 0.5);
 # bytes required in fixed size (FOR encoding)
 my $bytes = int(ceillog2(max @list) * scalar @list / 8);
-
-if (0) {
-  my $minsize = 1000000000;
-  my $maxval = max @list;
-  my $bitlim = ceillog2($maxval);
-  foreach my $p1 (0 .. $bitlim) {
-  foreach my $p2 (0 .. $bitlim) {
-    next unless ($p1 + $p2) <= $bitlim;
-    next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2)", @list);
-    my $len = $stream->len;
-    if ($len < $minsize) {
-      print "new min:  $len   ss($p1-$p2)\n";
-      $minsize = $len;
-    }
-  }
-  }
-  foreach my $p1 (0 .. $bitlim) {
-  foreach my $p2 (0 .. $bitlim) {
-  foreach my $p3 (0 .. $bitlim) {
-    next unless ($p1 + $p2 + $p3) <= $bitlim;
-    next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3)", @list);
-    my $len = $stream->len;
-    if ($len < $minsize) {
-      print "new min:  $len   ss($p1-$p2-$p3)\n";
-      $minsize = $len;
-    }
-  }
-  }
-  }
-  foreach my $p1 (0 .. $bitlim) {
-  foreach my $p2 (0 .. $bitlim) {
-  foreach my $p3 (0 .. $bitlim) {
-  foreach my $p4 (0 .. $bitlim) {
-    next unless ($p1 + $p2 + $p3 + $p4) <= $bitlim;
-    next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3,$p4]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3-$p4)", @list);
-    my $len = $stream->len;
-    if ($len < $minsize) {
-      print "new min:  $len   ss($p1-$p2-$p3-$p4)\n";
-      $minsize = $len;
-    }
-  }
-  }
-  }
-  }
-  foreach my $p1 (0 .. $bitlim) {
-  foreach my $p2 (0 .. $bitlim) {
-  foreach my $p3 (0 .. $bitlim) {
-  foreach my $p4 (0 .. $bitlim) {
-  foreach my $p5 (0 .. $bitlim) {
-    next unless ($p1 + $p2 + $p3 + $p4 + $p5) <= $bitlim;
-    next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3,$p4, $p5]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3-$p4-$p5)", @list);
-    my $len = $stream->len;
-    if ($len < $minsize) {
-      print "new min:  $len   ss($p1-$p2-$p3-$p4-$p5)\n";
-      $minsize = $len;
-    }
-  }
-  }
-  }
-  }
-  }
-}
 
 
 print "List (avg $avg, max ", max(@list), ", $bytes binary):\n";
