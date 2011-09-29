@@ -242,8 +242,40 @@ sub get_gamma {
   wantarray ? @vals : $vals[-1];
 }
 
-# Using default get_string, put_string
+sub put_string {
+  my $self = shift;
+  die "put while reading" unless $self->writing;
 
+  my $len = $self->len;
+  my $rstr = $self->_strref;
+
+  foreach my $str (@_) {
+    next unless defined $str;
+    die "invalid string" if $str =~ tr/01//c;
+    my $bits = length($str);
+    next unless $bits > 0;
+
+    $$rstr .= $str;
+    $len += $bits;
+  }
+  $self->_setlen( $len );
+  1;
+}
+sub read_string {
+  my $self = shift;
+  my $bits = shift;
+  die "Invalid bits" unless defined $bits && $bits >= 0;
+
+  my $len = $self->len;
+  my $pos = $self->pos;
+  die "Short read" unless $bits <= ($len - $pos);
+  my $rstr = $self->_strref;
+
+  $self->_setpos( $pos + $bits );
+  substr($$rstr, $pos, $bits);
+}
+
+# Given the custom read_string and put_string, these aren't really necessary.
 sub to_string {
   my $self = shift;
   $self->write_close;
@@ -252,15 +284,36 @@ sub to_string {
 sub from_string {
   my $self = shift;
   my $str  = shift;
+  die "invalid string" if $str =~ tr/01//c;
   my $bits = shift || length($str);
   $self->write_open;
+
   $self->_str( $str );
   $self->_setlen( $bits );
+
   $self->rewind_for_read;
 }
 
 # Using default to_raw, from_raw
 # Using default to_store, from_store
+
+# An example.  We have a custom put_string so this isn't much faster.
+#sub put_stream {
+#  my $self = shift;
+#  die "put while reading" unless $self->writing;
+#  my $source = shift;
+#  return 0 unless defined $source && $source->can('to_string');
+#
+#  if (ref $source eq __PACKAGE__) {
+#    my $rstr = $self->_strref;
+#    my $sstr = $source->_strref;
+#    $$rstr .= $$sstr;
+#    $self->_setlen( $self->len + $source->len );
+#  } else {
+#    $self->put_string($source->to_string);
+#  }
+#  1;
+#}
 
 __PACKAGE__->meta->make_immutable;
 no Mouse;

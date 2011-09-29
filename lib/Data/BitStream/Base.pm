@@ -15,15 +15,18 @@ has 'pos'  => (is => 'ro', isa => 'Int', writer => '_setpos', default => 0);
 has 'len'  => (is => 'ro', isa => 'Int', writer => '_setlen', default => 0);
 has 'writing' => (is => 'ro', isa => 'Bool', writer => '_set_write', default => 1);
 
-# Useful to use for testing sometimes, but very time consuming
-#after '_setpos' => sub {
-#  my $self = shift;
-#  my $pos = $self->pos;
-#  my $len = $self->len;
-#  die "position must be >= 0" if $pos < 0;
-#  die "position must be <= length" if $pos > $len;
-#  $pos;
-#};
+# Useful for testing, but time consuming.  Not so bad now that all the test
+# suites call put_*  ~30 times with a list instead of per-value ~30,000 times.
+# It still makes the test suite take about 20% longer.
+#
+# after '_setpos' => sub {
+#   my $self = shift;
+#   my $pos = $self->pos;
+#   my $len = $self->len;
+#   die "position must be >= 0" if $pos < 0;
+#   die "position must be <= length" if $pos > $len;
+#   $pos;
+# };
 
 {
   use Config;
@@ -249,7 +252,11 @@ sub put_string {
   die "put while reading" unless $self->writing;
 
   foreach my $str (@_) {
+    next unless defined $str;
+    die "invalid string" if $str =~ tr/01//c;
     my $bits = length($str);
+    next unless $bits > 0;
+
     my $spos = 0;
     while ($bits >= 32) {
       $self->write(32, oct('0b' . substr($str, $spos, 32)));
@@ -350,6 +357,22 @@ sub from_store {           # You ought to implement this.
   my $self = shift;
   $self->from_raw(@_);
 }
+
+# Takes a stream and inserts its contents into the current stream.
+# Non-destructive to both streams.
+sub put_stream {
+  my $self = shift;
+  my $source = shift;
+  return 0 unless defined $source && $source->can('to_string');
+
+  # in an implementation, you could check if ref $source eq __PACKAGE__
+  # and do something special.
+
+  $self->put_string($source->to_string);
+  1;
+}
+
+
 
 # Helper class methods for other functions
 sub _floorlog2 {

@@ -198,7 +198,41 @@ sub get_unary {
   wantarray ? @vals : $vals[-1];
 }
 
-# Using default get_string, put_string
+# Using default read_string
+
+sub put_string {
+  my $self = shift;
+  die "put while reading" unless $self->writing;
+
+  my $len = $self->len;
+  my $rvec = $self->_vecref;
+
+  foreach my $str (@_) {
+    next unless defined $str;
+    die "invalid string" if $str =~ tr/01//c;
+    my $bits = length($str);
+    next unless $bits > 0;
+
+    my $wpos = $len >> 5;
+    my $bpos = $len & 0x1F;
+    my $bits_to_write = $bits;
+    # First get the part that fills the last word.
+    my $first_bits = ($bpos == 0)  ?  0  :  32-$bpos;
+    if ($bpos > 0) {
+      my $newvec = pack("B*", substr($str, 0, $first_bits) );
+      vec($$rvec, $wpos++, 32) |= vec($newvec, 0, 32) >> $bpos;
+      $bits_to_write -= $first_bits;
+    }
+    # Now put the rest of the string in place quickly.
+    if ($bits_to_write > 0) {
+      $$rvec .= pack("B*", substr($str, $first_bits));
+    }
+
+    $len += $bits;
+  }
+  $self->_setlen($len);
+  1;
+}
 
 sub to_string {
   my $self = shift;
@@ -217,6 +251,7 @@ sub to_string {
 sub from_string {
   my $self = shift;
   my $str  = shift;
+  die "invalid string" if $str =~ tr/01//c;
   my $bits = shift || length($str);
   $self->write_open;
 

@@ -141,7 +141,7 @@ sub get_unary {
   wantarray ? @vals : $vals[-1];
 }
 
-# Using default get_string, put_string
+# Using default read_string, put_string
 
 sub to_string {
   my $self = shift;
@@ -160,6 +160,7 @@ sub to_string {
 sub from_string {
   my $self = shift;
   my $str  = shift;
+  die "invalid string" if $str =~ tr/01//c;
   my $bits = shift || length($str);
   $self->write_open;
 

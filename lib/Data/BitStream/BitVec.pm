@@ -173,12 +173,13 @@ sub get_unary {
   wantarray ? @vals : $vals[-1];
 }
 
-# Using default get_string, put_string
+# Using default read_string, put_string
 
 # It'd be nice to use to_Bin and new_Bin since they're super fast.  But...
 # they return the result in little endian.  Hence non-portable and won't
 # match other implementations.
 
+# These are really slow.  So use the default to_string, from_string.
 sub to_string2 {
   my $self = shift;
   $self->write_close;
