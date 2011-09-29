@@ -12,10 +12,10 @@ lib/Data/BitStream/WordVec.pm
 lib/Data/BitStream/Code/Baer.pm
 lib/Data/BitStream/Code/BoldiVigna.pm
 lib/Data/BitStream/Code/Delta.pm
+lib/Data/BitStream/Code/Escape.pm
 lib/Data/BitStream/Code/EvenRodeh.pm
 lib/Data/BitStream/Code/ExponentialGolomb.pm
 lib/Data/BitStream/Code/Fibonacci.pm
-lib/Data/BitStream/Code/Flag.pm
 lib/Data/BitStream/Code/GammaGolomb.pm
 lib/Data/BitStream/Code/Gamma.pm
 lib/Data/BitStream/Code/Golomb.pm

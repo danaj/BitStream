@@ -39,7 +39,6 @@ while (<STDIN>) {
 }
 
 
-
 # Helper functions
 # convert to/from decimal and BE binary, works with BE/LE, 32-/64-bit
 sub dec_to_bin {
