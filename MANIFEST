@@ -41,6 +41,7 @@ t/exporting.t
 t/interleave.t
 t/mixed.t
 t/multiget.t
+t/put_string.t
 t/range.t
 t/raw_size.t
 t/lib/BitStreamTest.pm
