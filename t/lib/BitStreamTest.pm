@@ -75,15 +75,15 @@ sub is_universal {
 
 sub encoding_list {
   my @e = qw|
-              Gamma Delta Omega Fib GG(4) GG(101) EG(5)
+              Gamma Delta Omega Fib GG(3) GG(128) EG(5)
               EvenRodeh Levenstein
               SSS(3-3-99) SS(1-0-1-0-2-12-99)
               DeltaGol(21) OmegaGol(21) FibGol(21) ERGol(890)
               Unary
-              Golomb(3) Golomb(10) Golomb(16) Golomb(14000)
+              Golomb(10) Golomb(16) Golomb(14000)
               Rice(2) Rice(9)
-              BVZeta(2) BVZeta(3)
-              Baer(0) Baer(-1) Baer(-2) Baer(1) Baer(2)
+              BVZeta(2)
+              Baer(0) Baer(-2) Baer(2)
             |;
   unshift @e, "Binword($maxbits)";
   @e; 

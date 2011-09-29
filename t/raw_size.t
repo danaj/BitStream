@@ -18,7 +18,7 @@ foreach my $type (@implementations) {
     my $success = 1;
     my $nvals = 500;
     my @data;
-    srand(10);
+    srand(110);
     for (1 .. $nvals) {
       push @data, int(rand(515));
     }

@@ -10,12 +10,14 @@ use BitStreamTest;
 # The purpose of this test is to ensure the base implementations keep all their
 # data stored in instance data, and nothing is cached shared among streams.
 
+my $nstreams = 7;
+my $nvals    = 500;
+
 my @implementations = impl_list;
+#plan tests =>  scalar @implementations * $nstreams * $nvals;
 plan tests =>  scalar @implementations;
 
 foreach my $type (@implementations) {
-  my $nstreams = 10;
-  my $nvals    = 1000;
 
   srand(12);
   my @stream_data;   # array of arrays holding random integers
@@ -53,6 +55,7 @@ foreach my $type (@implementations) {
       $streams[$sn]->rewind if $stream_counter[$sn] == 1;
       my $v = $streams[$sn]->get_gamma();
       my $orig = $stream_data[$sn][$stream_counter[$sn]];
+      #is($v, $orig, "$type interleaved gamma coding, value $stream_counter[$sn] of stream $sn/$nstreams");
       $success = 0 if $v != $orig;
     }
     ok($success, "$type: interleaved gamma coding ($nstreams streams)");

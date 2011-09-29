@@ -36,7 +36,8 @@ sub test_encoding {
     # Note we're not encoding 2^max-1.  The range test does that.
     foreach my $bits (1 .. $maxbits-1) {
       my $maxval = $maxpat >> ($maxbits - $bits);
-      push @data, $maxval, 0, $maxval, 8, $maxval, 17, $maxval, 3, $maxval;
+      # maxvals separated by binary '10001' and '0'
+      push @data, $maxval, 17, $maxval, 0, $maxval;
     }
 
     my $stream = stream_encode_array($type, $encoding, @data);

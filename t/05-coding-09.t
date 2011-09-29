@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use lib qw(t/lib BitStream/t/lib Data/BitStream/t/lib);
+use lib qw(t/lib);
 use BitStreamTest;
 
 my @implementations = impl_list;
@@ -26,9 +26,9 @@ sub test_encoding {
     my $success = 1;
     my $nvals = 500;
     my @data;
-    srand(10);
+    srand(52);
     for (1 .. $nvals) {
-      push @data, int(rand(1000));
+      push @data, int(rand(1025));
     }
     my $stream = stream_encode_array($type, $encoding, @data);
     BAIL_OUT("No stream of type $type") unless defined $stream;
