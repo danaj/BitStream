@@ -214,3 +214,134 @@ sub from_string2 {
 __PACKAGE__->meta->make_immutable;
 no Mouse;
 1;
+
+# ABSTRACT: A Bit::Vector implementation of Data::BitStream
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::BitVec - A L<Bit::Vector> implementation of L<Data::BitStream>
+
+=head1 SYNOPSIS
+
+  use Data::BitStream::BitVec;
+  my $stream = Data::BitStream::BitVec->new;
+  $stream->put_gamma($_) for (1 .. 20);
+  $stream->rewind_for_read;
+  my @values = $stream->get_gamma(-1);
+
+=head1 DESCRIPTION
+
+An implementation of L<Data::BitStream>.  See the documentation for that
+module for many more examples, and L<Data::BitStream::Base> for the API.
+This document only describes the unique features of this implementation,
+which is of limited value to people purely using L<Data::BitStream>.
+
+This implementation uses the L<Bit::Vector> module for internal data storage,
+as that module has a number of very efficient methods for manipulating
+vectors.  However, L<Bit::Vector> stores and accesses all its data in
+little-endian form, making it extremely difficult to use as a bit stream.
+Hence some functions such as C<get_unary> are blazing fast, as we can use
+one of the nice L<Bit::Vector> functions.  Many other functions are just as
+difficult or more difficult to create as regular vectors, and often turn
+out slower.
+
+Another interesting observation is that L<Bit::Vector> is quite slow to resize
+the vector.  Hence this implementation takes a rather aggressive stance in
+resizing, bumping up the size to C<1.15 * (needed_bits + 2048)> when the
+vector needs to grow.  When the stream is closed for writing, it is resized
+to just the size needed.
+
+Hence this implementation mainly serves as an example.  An XS implementation
+of a big-endian vector would make this extremely fast.
+
+=head2 DATA
+
+=over 4
+
+=item B< _vec >
+
+A private L<Bit::Vector> object.
+
+=back
+
+=head2 CLASS METHODS
+
+=over 4
+
+=item I<after> B< erase >
+
+Resizes the vector to 0.
+
+=item I<after> B< write_close >
+
+Resizes the vector to the actual length.
+
+=item B< read >
+
+=item B< write >
+
+=item B< put_unary >
+
+=item B< get_unary >
+
+These methods have custom implementations.
+
+=back
+
+=head2 ROLES
+
+The following roles are included.
+
+=over 4
+
+=item L<Data::BitStream::Code::Base>
+
+=item L<Data::BitStream::Code::Gamma>
+
+=item L<Data::BitStream::Code::Delta>
+
+=item L<Data::BitStream::Code::Omega>
+
+=item L<Data::BitStream::Code::Levenstein>
+
+=item L<Data::BitStream::Code::EvenRodeh>
+
+=item L<Data::BitStream::Code::Fibonacci>
+
+=item L<Data::BitStream::Code::Golomb>
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::GammaGolomb>
+
+=item L<Data::BitStream::Code::ExponentialGolomb>
+
+=item L<Data::BitStream::Code::StartStop>
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream>
+
+=item L<Data::BitStream::Base>
+
+=item L<Data::BitStream::WordVec>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

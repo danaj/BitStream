@@ -282,3 +282,132 @@ sub from_store {
 __PACKAGE__->meta->make_immutable;
 no Mouse;
 1;
+
+# ABSTRACT: A Vector-32 implementation of Data::BitStream
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::WordVec - A Vector-32 implementation of Data::BitStream
+
+=head1 SYNOPSIS
+
+  use Data::BitStream::WordVec;
+  my $stream = Data::BitStream::WordVec->new;
+  $stream->put_gamma($_) for (1 .. 20);
+  $stream->rewind_for_read;
+  my @values = $stream->get_gamma(-1);
+
+=head1 DESCRIPTION
+
+An implementation of L<Data::BitStream>.  See the documentation for that
+module for many more examples, and L<Data::BitStream::Base> for the API.
+This document only describes the unique features of this implementation,
+which is of limited value to people purely using L<Data::BitStream>.
+
+This implementation uses a Perl C<vec> to store the data.  The vector is
+accessed in 32-bit units, which makes it safe for 32-bit and 64-bit machines
+as well as reasonably time efficient.
+
+This is the default L<Data::BitStream> implementation.
+
+=head2 DATA
+
+=over 4
+
+=item B< _vec >
+
+A private scalar holding the data as a vector.
+
+=back
+
+=head2 CLASS METHODS
+
+=over 4
+
+=item B< _vecref >
+
+Retrieves a reference to the private vector.
+
+=item I<after> B< erase >
+
+Sets the private vector to the empty string C<''>.
+
+=item B< read >
+
+=item B< write >
+
+=item B< put_unary >
+
+=item B< get_unary >
+
+=item B< put_string >
+
+=item B< to_string >
+
+=item B< from_string >
+
+=item B< to_store >
+
+=item B< from_store >
+
+These methods have custom implementations.
+
+=back
+
+=head2 ROLES
+
+The following roles are included.
+
+=over 4
+
+=item L<Data::BitStream::Code::Base>
+
+=item L<Data::BitStream::Code::Gamma>
+
+=item L<Data::BitStream::Code::Delta>
+
+=item L<Data::BitStream::Code::Omega>
+
+=item L<Data::BitStream::Code::Levenstein>
+
+=item L<Data::BitStream::Code::EvenRodeh>
+
+=item L<Data::BitStream::Code::Fibonacci>
+
+=item L<Data::BitStream::Code::Golomb>
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::GammaGolomb>
+
+=item L<Data::BitStream::Code::ExponentialGolomb>
+
+=item L<Data::BitStream::Code::StartStop>
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream>
+
+=item L<Data::BitStream::Base>
+
+=item L<Data::BitStream::String>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

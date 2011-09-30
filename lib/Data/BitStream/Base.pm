@@ -416,3 +416,271 @@ sub _dec_to_bin {
 
 no Mouse;
 1;
+
+
+# ABSTRACT: A Role implementing the API for Data::BitStream
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Base - A Role implementing the API for Data::BitStream
+
+=head1 SYNOPSIS
+
+  use Mouse;
+  with 'Data::BitStream::Base';
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides the basic API, including
+generic code for almost all functionality.
+
+This is used by particular implementations such as L<Data::BitStream::String>
+and L<Data::BitStream::WordVec>.
+
+=head2 DATA
+
+=over 4
+
+=item B< pos >
+
+A read-only non-negative integer indicating the current position in a read
+stream.  It is advanced by C<read>, C<get>, and C<skip> methods, as well
+as changed by C<to>, C<from>, C<rewind>, and C<erase> methods.
+
+=item B< len >
+
+A read-only non-negative integer indicating the current length of the stream
+in bits.  It is advanced by C<write> and C<put> methods, as well as changed
+by C<from> and C<erase> methods.
+
+=item B< writing >
+
+A read-only boolean indicating whether the stream is open for writing or
+reading.  Methods for read such as
+C<read>, C<get>, C<skip>, C<rewind>, C<skip>, and C<exhausted>
+are not allowed while writing.  Methods for write such as
+C<write> and C<put>
+are not allowed while reading.  
+
+The C<write_open> and C<erase_for_write> methods will set writing to true.
+The C<write_close> and C<rewind_for_read> methods will set writing to false.
+
+The read/write distinction allows implementations more freedom in internal
+caching of data.  For instance, they can gather writes into blocks.  It also
+can be helpful in catching mistakes such as reading from a target stream.
+
+=back
+
+=head2 CLASS METHODS
+
+=over 4
+
+=item B< maxbits >
+
+Returns the number of bits in a word, which is the largest allowed size of
+the C<bits> argument to C<read> and C<write>.  This will be either 32 or 64.
+
+=back
+
+=head2 OBJECT METHODS (I<reading>)
+
+These methods are only value while the stream is in reading state.
+
+=over 4
+
+=item B< rewind >
+
+Moves the position to the stream beginning.
+
+=item B< exhausted >
+
+Returns true is the stream is at the end.  Rarely used.
+
+=item B< read($bits [, 'readahead']) >
+
+Reads C<$bits> from the stream and returns the value.
+C<$bits> must be between C<1> and C<maxbits>.
+
+The position is advanced unless the second argument is the string 'readahead'.
+
+I<Note for implementations>: You have to implement this.
+
+=item B< skip($bits) >
+
+Advances the position C<$bits> bits.  Used in conjunction with C<readahead>.
+
+=item B< get_unary([$count]) >
+
+Reads one or more values from the stream in C<0000...1> unary coding.
+If C<$count> is C<1> or not supplied, a single value will be read.
+If C<$count> is positive, that many values will be read.
+If C<$count> is negative, values are read until the end of the stream.
+
+In list context this returns a list of all values read.  In scalar context
+it returns the last value read.
+
+I<Note for implementations>: You should have efficient code for this.
+
+=item B< get_unary1([$count]) >
+
+Like C<get_unary>, but using C<1111...0> unary coding.  Less common.
+
+=item B< get_binword($bits, [$count]) >
+
+Reads one or more values from the stream as fixed-length binary numbers, each
+using C<$bits> bits.  The treatment of count and return values is identical to
+C<get_unary>.
+
+=item B< read_string($bits) >
+
+Reads C<$bits> bits from the stream and returns them as a binary string, such
+as '0011011'.
+
+=back
+
+=head2 OBJECT METHODS (I<writing>)
+
+These methods are only value while the stream is in writing state.
+
+=over 4
+
+=item B< write($bits, $value) >
+
+Writes C<$value> to the stream using C<$bits> bits.  
+C<$bits> must be between C<1> and C<maxbits>.
+
+The length is increased by C<$bits> bits.
+
+Regardless of the contents of C<$value>, exactly C<$bits> bits will be used.
+If C<$value> has more non-zero bits than C<$bits>, the lower bits are written.
+In other words, C<$value> will be masked before writing.
+
+I<Note for implementations>: You have to implement this.
+
+=item B< put_unary(@values) >
+
+Writes the values to the stream in C<0000...1> unary coding.
+Unary coding is only appropriate for relatively small numbers, as it uses
+C<$value + 1> bits.
+
+I<Note for implementations>: You should have efficient code for this.
+
+=item B< put_unary1(@values) >
+
+Like C<put_unary>, but using C<1111...0> unary coding.  Less common.
+
+=item B< put_binword($bits, @values) >
+
+Writes the values to the stream as fixed-length binary values.  This is just
+a loop inserting each value with C<write($bits, $value)>.
+
+=item B< put_string(@strings) >
+
+Takes one or more binary strings, such as '1001101', '001100', etc. and
+writes them to the stream.  The number of bits used for each value is equal
+to the string length.
+
+=item B< put_stream($source_stream) >
+
+Writes the contents of C<$source_stream> to the stream.  This is a helper
+method that might be more efficient than doing it in one of the many other
+possible ways.  The default implementation uses:
+
+  $self->put_string( $source_stream->to_string );
+
+=back
+
+=head2 OBJECT METHODS (I<conversion>)
+
+These methods may be called at any time, and will adjust the state of the
+stream.
+
+=over 4
+
+=item B< to_string >
+
+Returns the stream as a binary string, e.g. '00110101'.
+
+=item B< to_raw >
+
+Returns the stream as packed big-endian data.  This form is portable to
+any other implementation on any architecture.
+
+=item B< to_store >
+
+Returns the stream as some scalar holding the data in some implementation
+specific way.  This may be portable or not, but it can always be read by
+the same implementation.  It might be more efficient than the raw format.
+
+
+=item B< from_string($string) >
+
+The stream will be set to the binary string C<$string>.
+
+=item B< from_raw($packed [, $bits]) >
+
+The stream is set to the packed big-endian vector C<$packed> which has
+C<$bits> bits of data.  If C<$bits> is not present, then C<length($packed)>
+will be used as the byte-length.  It is recommended that you include C<$bits>.
+
+=item B< from_store($blob [, $bits]) >
+
+Similar to C<from_raw>, but using the value returned by C<to_store>.
+
+=back
+
+=head2 OBJECT METHODS (I<other>)
+
+=over 4
+
+=item B< erase >
+
+Erases all the data, while the writing state is left unchanged.  The position
+and length will both be 0 after this is finished.
+
+I<Note for implementations>: You need an 'after' method to actually erase the data.
+
+=item B< write_open >
+
+Changes the state to writing with no other API-visible changes.
+
+=item B< write_close >
+
+Changes the state to reading, and the position is set to the end of the
+stream.  No other API-visible changes happen.
+
+=item B< erase_for_write >
+
+A helper function that performs C<erase> followed by C<write_open>.
+
+=item B< rewind_for_read >
+
+A helper function that performs C<write_close> followed by C<rewind>.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream>
+
+=item L<Data::BitStream::String>
+
+=item L<Data::BitStream::WordVec>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
