@@ -4,7 +4,9 @@ use warnings;
 use Data::Dumper;
 use List::Util qw(shuffle sum max);
 use Time::HiRes qw(gettimeofday tv_interval);
-use lib qw(../lib ../t/lib);
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../t/lib";
 use BitStreamTest;
 
 # Time with small, big, and mixed numbers.

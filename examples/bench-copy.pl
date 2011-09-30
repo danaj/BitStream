@@ -4,11 +4,11 @@ use warnings;
 use Data::Dumper;
 use List::Util qw(shuffle sum max);
 use Time::HiRes qw(gettimeofday tv_interval);
-use lib qw(../lib ../t/lib);
+use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream::WordVec;
 use Data::BitStream::String;
-use Data::BitStream::Vec;
-use Data::BitStream::BitVec;
+#use Data::BitStream::Vec;
+#use Data::BitStream::BitVec;
 
 sub ceillog2 {
   my $v = shift;

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use lib qw(../lib ../t/lib);
+use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
 use Data::BitStream::Code::BoldiVigna;
 use Data::BitStream::Code::Baer;

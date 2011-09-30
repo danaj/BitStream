@@ -7,7 +7,7 @@ $| = 1;  # fast pipes
 # Load up the integercoding.pl routines, ignore the program
 eval {require 'integercoding.pl'; };
 
-use lib qw(../lib ../t/lib);
+use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
 my $stream = Data::BitStream->new();
 
