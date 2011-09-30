@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use lib qw(t/lib BitStream/t/lib Data/BitStream/t/lib);
+use lib qw(t/lib);
 use BitStreamTest;
 
 my @implementations = impl_list;

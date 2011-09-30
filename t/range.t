@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use List::Util qw(shuffle);
-use lib qw(t/lib BitStream/t/lib);
+use lib qw(t/lib);
 use BitStreamTest;
 
 my $maxval = (~0);
