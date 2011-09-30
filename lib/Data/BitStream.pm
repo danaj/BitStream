@@ -4,7 +4,7 @@ package Data::BitStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 require Exporter;
 
@@ -106,8 +106,9 @@ using XS for internals may resolve some performance concerns.
   my $stream = Data::BitStream->new;
   # Loop over the data: characters, pixels, table entries, etc.
   foreach my $v (@values) {
-    # predict the value at this pixel using your subroutine.
-    my $p = predict();
+    # predict the current value using your subroutine.  This routine
+    # will use one or more previous values to estimate the current one.
+    my $p = predict($v);
     # determine the signed difference.
     my $diff = $v - $p;
     # Turn this into an absolute difference suitable for coding.

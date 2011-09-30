@@ -1,6 +1,10 @@
 Revision history for Perl extension Data::BitStream.
 
-0.02
+0.03
+	- Clarify POD compression example slightly.
+
+0.02  Fri Sep 30 08:16:13 2011
+	- Create dist with tool instead of by hand.  Uses version number.
 	- WordVec was setting the Vec variables.
 
 0.01  Mon Sep 26 10:12:53 2011

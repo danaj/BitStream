@@ -3,12 +3,13 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME         => 'Data::BitStream',
     ABSTRACT     => "A class implementing a stream of bits and coding methods",
-    LICENSE      => 'perl', 
     VERSION_FROM => 'lib/Data/BitStream.pm', # finds $VERSION
 
-    #BUILD_REQUIRES => {
-    #                 'Test::More'       => '0.82',
-    #             },
+    ($ExtUtils::MakeMaker::VERSION >= 6.3002
+      ? ('LICENSE'=> 'perl') : ()),
+
+    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
+       (AUTHOR         => 'Dana A Jacobsen <dana@acm.org>') : ()),
 
     PREREQ_PM => {
                      # Tested with 0.92 and 0.98
@@ -18,6 +19,4 @@ WriteMakefile(
                      'Mouse::Role'      => '0.58',
                  },
 
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-       (AUTHOR         => 'Dana A Jacobsen <dana@acm.org>') : ()),
 );
