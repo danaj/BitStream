@@ -45,3 +45,12 @@ t/put_string.t
 t/range.t
 t/raw_size.t
 t/lib/BitStreamTest.pm
+examples/3d-gamma.raw
+examples/bench-codes.pl
+examples/bench-copy.pl
+examples/code-table.pl
+examples/compression-code.pl
+examples/integercoding.pl
+examples/rand-geo.pl
+examples/test-ic.pl
+examples/tvlc-newcode.pl

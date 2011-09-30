@@ -1,16 +1,28 @@
 Data-BitStream version 0.01
 ===========================
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+A Mouse/Moose class providing read/write access to bit streams.  This includes
+many integer coding methods as well as straightforward ways to implement new
+codes.
 
-A README file is required for CPAN modules since CPAN extracts the
-README file from a module distribution so that people browsing the
-archive can use it get an idea of the modules uses. It is usually a
-good idea to provide version information here so that people can
-decide whether fixes for the module are worth downloading.
+Bit streams are often used in data compression and in embedded products where
+memory is at a premium.  While this Perl implementation may not be appropriate
+for many of these applications (speed and Perl), it can be very useful for
+prototyping and experimenting with different codes.  A future implementation
+using XS for internals may resolve some performance concerns.
+
+
+SYNOPSIS
+
+  use Data::BitStream;
+  my $stream = Data::BitStream->new;
+  $stream->put_gamma($_) for (1 .. 20);
+  $stream->rewind_for_read;
+  my @values = $stream->get_gamma(-1);
+
+See the POD module documentation for examples and more information on all the
+methods included.
+
 
 INSTALLATION
 
@@ -20,6 +32,7 @@ To install this module type the following:
    make
    make test
    make install
+
 
 DEPENDENCIES
 
@@ -33,6 +46,7 @@ It works identically with Moose instead of Mouse, but it's almost 2x slower.
 I have tested this using perl versions 5.8.9, 5.10.1, 5.12.4, 5.14.1,
 and 5.15.2.
 
+
 COPYRIGHT AND LICENCE
 
 Copyright (C) 2011 by Dana Jacobsen <dana@acm.org>
@@ -40,5 +54,3 @@ Copyright (C) 2011 by Dana Jacobsen <dana@acm.org>
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.1 or,
 at your option, any later version of Perl 5 you may have available.
-
-
