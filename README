@@ -1,4 +1,4 @@
-Data-BitStream version 0.01
+Data-BitStream version 0.02
 ===========================
 
 A Mouse/Moose class providing read/write access to bit streams.  This includes

@@ -1,5 +1,8 @@
 Revision history for Perl extension Data::BitStream.
 
+0.02
+	- WordVec was setting the Vec variables.
+
 0.01  Mon Sep 26 10:12:53 2011
 	- original version; created by h2xs 1.23 with options
 		-XAn Data::BitStream

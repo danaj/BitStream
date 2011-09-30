@@ -2,10 +2,10 @@ package Data::BitStream::WordVec;
 use strict;
 use warnings;
 BEGIN {
-  $Data::BitStream::Vec::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::WordVec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::Vec::VERSION = '0.01';
+  $Data::BitStream::WordVec::VERSION = '0.02';
 }
 
 use Mouse;
