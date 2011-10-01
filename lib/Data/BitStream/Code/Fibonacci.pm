@@ -5,13 +5,13 @@ BEGIN {
   $Data::BitStream::Code::Fibonacci::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::Code::Fibonacci::VERSION = '0.02';
+  $Data::BitStream::Code::Fibonacci::VERSION = '0.03';
 }
 
 use Mouse::Role;
 requires qw(write put_string get_unary read);
 
-# Fraenkel and Klein, 1996, C1 code.
+# Fraenkel/Klein 1996 C1 code (based on work by Apostolico/Fraenkel 1985)
 #
 # The C2 code is also supported, though not efficiently.  C3 is not supported.
 #
@@ -26,18 +26,22 @@ requires qw(write put_string get_unary read);
 # where m >= 2.  In particular the m=3 and m=4 codes have proven useful in some
 # applications (see papers by Klein et al.).
 
-# Calculate Fibonacci numbers F[2]+ using simple forward calculation.
-# Generate enough so we can encode any integer from 0 - ~0.
-my @fibs;
-{
-  my ($v2, $v1) = (0,1);
+# General order m >= 2 sequences.  Generate enough to encode any integer
+# from 0 to ~0.  Note that the first 0,1 for all sequences are removed.
+my @fibs_order;
+sub _calc_fibs_for_order_m {
+  my $m = shift;
+  die unless $m >= 2;
+  my @fibm = (0) x ($m-1);
+  push @fibm, 1, 1, 2;
+  my $v1 = $fibm[-1];
   while ($v1 <= ~0) {
-    ($v2, $v1) = ($v1, $v2+$v1);
-    push(@fibs, $v1);
+    foreach my $i (2 .. $m) { $v1 += $fibm[-$i]; }
+    push(@fibm, $v1);
   }
-  # @fibs is now (1, 2, 3, 5, 8, 13, ...)
+  splice(@fibm, 0, $m);  # remove the first elements
+  $fibs_order[$m] = \@fibm;
 }
-die unless defined $fibs[41];  # we use this below
 
 # Since calculating the Fibonacci codes are relatively expensive, cache the
 # size and code for small values.
@@ -46,6 +50,8 @@ my @fib_code_cache;
 
 sub put_fib {
   my $self = shift;
+  _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
+  my @fibs = @{$fibs_order[2]};  # arguably we should just use the reference
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
@@ -125,6 +131,10 @@ sub put_fib {
 
 sub get_fib {
   my $self = shift;
+
+  _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
+  my @fibs = @{$fibs_order[2]};  # arguably we should just use the reference
+
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -146,11 +156,87 @@ sub get_fib {
   wantarray ? @vals : $vals[-1];
 }
 
+
+# TODO: fibm does not work yet
+
+sub put_fibm {
+  my $self = shift;
+  my $m = shift;
+  die "invalid parameters" unless $m >= 2 && $m <= 10;
+  _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
+  my @fibm = @{$fibs_order[$m]};
+
+  foreach my $val (@_) {
+    die "Value must be >= 0" unless $val >= 0;
+
+    if    ($val == 0) {  $self->put_string(      '1' x $m); next; }
+    elsif ($val == 1) {  $self->put_string('0' . '1' x $m); next; }
+
+    my $d = $val+1;
+    my $s = 0;
+    #$s += 20  while (defined $fibm[$s+20]) && ($d >= $fibm[$s+20]);
+    $s++ while ($d >= $fibm[$s]);
+
+    # Generate the string code.
+    my $r = '1' x ($m-1);
+    while ($s-- > 0) {
+      if ($d >= $fibm[$s]) {
+        $d -= $fibm[$s];
+        $r .= '1';
+      } else {
+        $r .= '0';
+      }
+    }
+    $self->put_string(scalar reverse $r);
+  }
+  1;
+}
+
+sub get_fibm {
+  my $self = shift;
+  my $m = shift;
+  die "invalid parameters" unless $m >= 2 && $m <= 10;
+  _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
+  my @fibm = @{$fibs_order[$m]};
+  my $count = shift;
+  if    (!defined $count) { $count = 1;  }
+  elsif ($count  < 0)     { $count = ~0; }   # Get everything
+  elsif ($count == 0)     { return;      }
+
+  my $term = ~(~0 << $m);
+
+  my @vals;
+  while ($count-- > 0) {
+    my $code = $self->readahead($m);
+    last unless defined $code;
+    my $val = 1;
+    my $s = 0;
+    while ($code != $term) {
+      $val += $fibm[$s]  if $self->read(1);
+      $s++;
+      $code = $self->readahead($m);
+    }
+    $self->skip($m);
+    push @vals, $val-1;
+  }
+  wantarray ? @vals : $vals[-1];
+}
+
+# Consider Sayood's NF3 code, described on pages 67-70 of his
+# Lossless Compression Handbook
+#
+# If F(N) ends with ....01, add the terminator 110.  Final is ...01110
+# If F(N) ends with ...011, add the terminator  11.  Final is ...01111
+
+
+
 # String functions
 
 sub _encode_fib_c1 {
   my $d = shift;
   die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
+  _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
+  my @fibs = @{$fibs_order[2]};
   my $s =  ($d < $fibs[20])  ?  0  :  ($d < $fibs[40])  ?  21  :  41;
   $s++ while ($d >= $fibs[$s]);
   my $r = '1';
@@ -168,6 +254,8 @@ sub _encode_fib_c1 {
 sub _decode_fib_c1 {
   my $str = shift;
   die "Invalid Fibonacci C1 code" unless $str =~ /^[01]*11$/;
+  _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
+  my @fibs = @{$fibs_order[2]};
   my $val = 0;
   foreach my $b (0 .. length($str)-2) {
     $val += $fibs[$b]  if substr($str, $b, 1) eq '1';
@@ -315,20 +403,17 @@ These methods are required for the role.
 
 =over 4
 
-=item A.S. Fraenkel and S.T. Klein, "Robust Universal Complete Codes for Transmission and Compression", Discrete Applied Mathematics, Vol 64, pp 31-55, 1996.
+=item Alberto Apostolico and Aviezri S. Fraenkel, "Robust Transmission of Unbounded Strings Using Fibonacci Representations", Computer Science Technical Reports, Paper 464, Purdue University, 14 October 1985.  L<http://docs.lib.purdue.edu/cstech/464/>
 
-=item L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.3064>
+=item A.S. Fraenkel and S.T. Klein, "Robust Universal Complete Codes for Transmission and Compression", Discrete Applied Mathematics, Vol 64, pp 31-55, 1996.  L<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.3064>
 
-Introduces the order C<m=2> Fibonacci codes C1, C2, and C3.  The m=2 C1 codes
-are what most people call Fibonacci codes.
+These papers introduce and describe the order C<mE<gt>=2> Fibonacci codes C1, C2, and C3.  The C<m=2> C1 codes are what most people call Fibonacci codes.
 
 =item L<http://en.wikipedia.org/wiki/Fibonacci_coding>
 
 A description of the C<m=2> C1 code.
 
-=item Shmuel T. Klein and Miri Kopel Ben-Nissan, "On the Usefulness of Fibonacci Compression Codes", The Computer Journal, Vol 53, pp 701-716, 2010.
-
-=item L<http://u.cs.biu.ac.il/~tomi/Postscripts/fib-rev.pdf>
+=item Shmuel T. Klein and Miri Kopel Ben-Nissan, "On the Usefulness of Fibonacci Compression Codes", The Computer Journal, Vol 53, pp 701-716, 2010.  L<http://u.cs.biu.ac.il/~tomi/Postscripts/fib-rev.pdf>
 
 More information on Fibonacci codes, including C<mE<gt>2> codes.
 
