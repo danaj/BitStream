@@ -85,7 +85,7 @@ sub get_baer {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Michael B. Baer's power law codes

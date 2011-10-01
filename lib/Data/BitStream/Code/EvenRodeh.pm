@@ -76,7 +76,7 @@ sub get_evenrodeh {
 
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Even-Rodeh codes

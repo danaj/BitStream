@@ -238,7 +238,7 @@ sub get_fib_c2 {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Fibonacci codes

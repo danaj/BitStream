@@ -19,7 +19,7 @@ sub get_gammagolomb {
   my $self = shift;
   $self->get_golomb( sub { shift->get_gamma(@_); }, @_ );
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Gamma-Golomb codes

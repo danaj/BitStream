@@ -114,7 +114,7 @@ sub get_boldivigna {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing the Zeta codes of Boldi and Vigna

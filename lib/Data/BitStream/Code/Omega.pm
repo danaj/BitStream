@@ -126,7 +126,7 @@ sub get_omega {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Elias Omega codes

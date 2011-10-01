@@ -28,11 +28,13 @@ has 'writing' => (is => 'ro', isa => 'Bool', writer => '_set_write', default => 
 #   $pos;
 # };
 
+# class method
 {
-  use Config;
   my $mbits = 32;
+  use Config;
   $mbits = 64 if defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define';
   $mbits = 64 if defined $Config{'longsize'} && $Config{'longsize'} >= 8;
+  no Config;
 
   sub maxbits { $mbits; }
 }
@@ -414,7 +416,7 @@ sub _dec_to_bin {
   }
 }
 
-no Mouse;
+no Mouse::Role;
 1;
 
 

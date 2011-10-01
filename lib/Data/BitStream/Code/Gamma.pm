@@ -74,7 +74,7 @@ sub get_gamma {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Elias Gamma codes

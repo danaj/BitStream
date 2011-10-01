@@ -103,7 +103,7 @@ sub get_golomb {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Golomb codes

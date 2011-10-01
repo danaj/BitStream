@@ -164,7 +164,7 @@ sub get_startstepstop {
 
   return $self->get_startstop( [@pmap], @_ );
 }
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Start/Stop and Start-Step-Stop codes

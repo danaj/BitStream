@@ -30,7 +30,7 @@ sub get_expgolomb {
   $self->get_rice( sub { shift->get_gamma(@_); }, @_ );
 }
 
-no Mouse;
+no Mouse::Role;
 1;
 
 # ABSTRACT: A Role implementing Exponential-Golomb codes
