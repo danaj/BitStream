@@ -1,13 +1,14 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Data::Dumper;
 use List::Util qw(shuffle sum max);
 use Time::HiRes qw(gettimeofday tv_interval);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../t/lib";
-use BitStreamTest;
+
+#use lib "$FindBin::Bin/../t/lib";
+#use BitStreamTest;
+use Data::BitStream;
 
 # Time with small, big, and mixed numbers.
 
@@ -19,17 +20,13 @@ sub ceillog2 {
   $b;
 }
 
-my @encodings = qw(unary gamma delta omega baer(-1));
-#my @encodings = qw(gamma gg3 rice1 rice2 rice3 rice4 rice5 rice6 rice7 rice8 rice9 rice10 rice11 rice12 rice13 rice14);
-#my @encodings = qw(gamma gg3 fib eg0 eg1 eg2 eg4 eg5 eg6);
-#my @encodings = qw(unary gamma gg3 fib rice8 eg8);
-#my @encodings = qw(gamma delta omega gg3 fib);
-#my @encodings = qw(gol3 gol5 gol10 gg3 mgg3 mgg5 mgg10);
+my $add_golomb = 0;
+
+my @encodings = qw(Unary Gamma Delta Omega Fibonacci);
 #my @encodings = qw|gamma delta omega fib fibc2 gg(3) mgg3 flag(2-5-8-20) sss(2-3-20)|;
 #my @encodings = qw|gamma delta omega evenrodeh fib fibc2 binword(64) gg(11) deltagol(11) omegagol(11) ergol(11) fibgol(11) mgg3 eg(3) golomb(12) rice(3) sss(2-3-20) ss(5-6-9) ss(2-3-3-3-5-4)|;
 #my @encodings = qw|gamma delta gg(11) eg(3)|;
 #my @encodings = qw|unary gamma delta omega fib bvzeta(2) bvzeta(3) baer(0) baer(-1) baer(-2) baer(-3) baer(1) baer(2) baer(3)|;
-#my @encodings = qw|baer(0)|;
 #my @encodings = qw|fib fibc2|;
 #my @encodings = qw|gamma delta omega levenstein bvzeta(2) bvzeta(5) ss(5-6-9) ss(5-5-4-6) ss(2-6-3-5-4) ss(2-3-3-3-5-4) ss(2-3-3-3-3-2-4)|;
 #my @encodings = qw|sss(2-3-20) ss(0-1-3-5-12)|;
@@ -86,8 +83,10 @@ my $bytes_small = int(ceillog2(max @list_small) * scalar @list_small / 8);
 my $bytes_medium = int(ceillog2(max @list_medium) * scalar @list_medium / 8);
 my $bytes_large = int(ceillog2(max @list_large) * scalar @list_large / 8);
 
-push @encodings, 'golomb(' . int(0.69 * $avg_medium) . ')';
-push @encodings, 'golomb(' . int(0.69 * $avg_large) . ')';
+if ($add_golomb) {
+  push @encodings, 'golomb(' . int(0.69 * $avg_medium) . ')';
+  push @encodings, 'golomb(' . int(0.69 * $avg_large) . ')';
+}
 
 print "Small (avg $avg_small, $bytes_small binary):\n";
   time_list($_, @list_small) for (@encodings);
@@ -98,17 +97,30 @@ print "Large (avg $avg_large, $bytes_large binary):\n";
 
 sub time_list {
   my $encoding = shift;
+  die "'$encoding' is unsupported"
+      unless Data::BitStream::code_is_supported($encoding);
   my @list = @_;
   my $s1 = [gettimeofday];
-  my $stream = stream_encode_array('string', $encoding, @list);
-  die "Stream ($encoding) construction failure" unless defined $stream;
+
+  #my $stream = stream_encode_array('wordvec', $encoding, @list);
+  #die "Stream ($encoding) construction failure" unless defined $stream;
+
+  my $stream = Data::BitStream->new;
+  die "Stream construction failure" unless defined $stream;
+  $stream->code_put($encoding, @list);
+
   my $e1 = int(tv_interval($s1)*1_000_000);
   my $len = $stream->len;
   my $s2 = [gettimeofday];
-  my @a = stream_decode_array($encoding, $stream);
+
+  #my @a = stream_decode_array($encoding, $stream);
+
+  $stream->rewind_for_read;
+  my @a = $stream->code_get($encoding, -1);
+
   my $e2 = int(tv_interval($s2)*1_000_000);
   foreach my $i (0 .. $#list) {
-      #die "incorrect $encoding coding for $i" if $a[$i] != $list[$i];
+      die "incorrect $encoding coding for $i" if $a[$i] != $list[$i];
   }
   # convert total uS time into ns/value
   $e1 = int(1000 * ($e1 / scalar @list));

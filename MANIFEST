@@ -44,6 +44,7 @@ t/multiget.t
 t/put_string.t
 t/range.t
 t/raw_size.t
+t/text.t
 t/lib/BitStreamTest.pm
 examples/3d-gamma.raw
 examples/bench-codes.pl
