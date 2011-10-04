@@ -25,16 +25,18 @@ with 'Data::BitStream::Base',
 
 has '_vec' => (is => 'rw', default => '');
 
+
 # Access the raw vector.
 sub _vecref {
   my $self = shift;
- \$self->{_vec};
+  \$self->{_vec};
 }
 after 'erase' => sub {
   my $self = shift;
   $self->_vec('');
   1;
 };
+
 
 sub read {
   my $self = shift;
@@ -162,26 +164,28 @@ sub get_unary {
       $v = (vec($$rvec, $wpos++, 32) & (0xFFFFFFFF >> $bpos)) << $bpos;
     }
     # If this word is 0, advance words until we find one that is non-zero.
+    # Small values are common, so check out the next word.
     if ($v == 0) {
       $onepos += (32-$bpos) if $bpos > 0;
-      my $startwpos = $wpos;
-      my $lastwpos = ($len+31) >> 5;
+      $v = vec($$rvec, $wpos++, 32);
+      if ($v == 0) {
+        # We've seen at least 33 zeros.  Start trying to scan quickly.
+        $onepos += 32;
+        my $startwpos = $wpos;
+        my $lastwpos = ($len+31) >> 5;
 
-      # Something using this method could be very fast:
-      #   my $maxwords = $lastwpos - $wpos + 1;
-      #   my $slen = ($maxwords > 128) ?  128*4  :  $maxwords*4;
-      #   substr($$rvec,$wpos*4,$slen) =~ /((?:\x00{4})+)/;
-      # but it looks like I'm hitting endian issues.
-      # Using tr/\000/\000/ to count leading zeros is the same.
+        # 100us:  //g followed by pos
+        #  34us:  unpack("%32W*", substr($$rvec,$wpos*4,32)) == 0
+        #  27us:  substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32
+        #  24us:  substr($$rvec,$wpos*4,32) eq "\x00 .... \x00"
+        #  12us:  tr with 128 then 32
 
-      # Quickly skip forward through very long runs of zeros
-      $wpos += 8 while ( (($wpos+6) < $lastwpos) && (substr($$rvec,$wpos*4,32) eq "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00") );
-      #$wpos += 4 while ( (($wpos+2) < $lastwpos) && (substr($$rvec,$wpos*4,16) eq "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00") );
-
-      while ( ($wpos <= $lastwpos) && ($v == 0) ) {
-        $v = vec($$rvec, $wpos++, 32);
+        $wpos += 32 while ( (($wpos+30) < $lastwpos) && (substr($$rvec,$wpos*4,128) =~ tr/\000/\000/ == 128) );
+        $wpos += 8 while ( (($wpos+6) < $lastwpos) && (substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32) );
+        $wpos++ while ($wpos <= $lastwpos && vec($$rvec, $wpos, 32) == 0);
+        $v = vec($$rvec, $wpos, 32);
+        $onepos += 32*($wpos - $startwpos);
       }
-      $onepos += 32*($wpos-1 - $startwpos);
     }
     die "get_unary read off end of vector" if $onepos >= $len;
     die if $v == 0;
@@ -262,19 +266,26 @@ sub from_string {
   $self->rewind_for_read;
 }
 
-# Using default to_raw, from_raw
+# Our internal format is a big-endian vector, so to_raw and from_raw
+# are easy.  We default to_store and from_store.
 
-sub to_store {
+sub to_raw {
   my $self = shift;
   $self->write_close;
-  $self->_vec;
+  my $rvec = $self->_vecref;
+  return $$rvec;
 }
-sub from_store {
-  my $self = shift;
-  my $vec  = shift;
-  my $bits = shift || length($vec);
+
+sub from_raw {
+  my $self = $_[0];
+  # data comes in 2nd argument
+  my $bits = $_[2] || 8*length($_[1]);
+
   $self->write_open;
-  $self->_vec( $vec );
+
+  my $rvec = $self->_vecref;
+  $$rvec = $_[1];
+
   $self->_setlen( $bits );
   $self->rewind_for_read;
 }
