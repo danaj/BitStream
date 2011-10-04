@@ -11,9 +11,11 @@ BEGIN {
 use Mouse::Role;
 
 # pos is ignored while writing
-has 'pos'  => (is => 'ro', isa => 'Int', writer => '_setpos', default => 0);
-has 'len'  => (is => 'ro', isa => 'Int', writer => '_setlen', default => 0);
-has 'writing' => (is => 'ro', isa => 'Bool', writer => '_set_write', default => 1);
+has 'pos'     => (is => 'ro', isa => 'Int', writer => '_setpos', default => 0);
+has 'len'     => (is => 'ro', isa => 'Int', writer => '_setlen', default => 0);
+has 'writing' => (is => 'ro', isa => 'Bool',writer => '_setwrite', default=>1);
+has 'file'    => (is => 'ro', writer => '_setfile', default => undef);
+has 'mode'    => (is => 'rw', default => 'rdwr');
 
 # Useful for testing, but time consuming.  Not so bad now that all the test
 # suites call put_*  ~30 times with a list instead of per-value ~30,000 times.
@@ -27,6 +29,44 @@ has 'writing' => (is => 'ro', isa => 'Bool', writer => '_set_write', default => 
 #   die "position must be <= length" if $pos > $len;
 #   $pos;
 # };
+
+sub BUILD {
+  my $self = shift;
+
+  # Change mode to canonical form
+  my $mode = $self->mode;
+  my $writing;
+  if    ($mode eq 'read')      { $mode = 'r'; }
+  elsif ($mode eq 'readonly')  { $mode = 'ro'; }
+  elsif ($mode eq 'write')     { $mode = 'w'; }
+  elsif ($mode eq 'writeonly') { $mode = 'wo'; }
+  elsif ($mode eq 'readwrite') { $mode = 'rw'; }
+  elsif ($mode eq 'rdwr')      { $mode = 'rw'; }
+  elsif ($mode eq 'append')    { $mode = 'a'; }
+  die "Unknown mode: $mode" unless $mode =~ /^(?:r|ro|w|wo|rw|a)$/;
+
+  # Set writing based on mode
+  if    ($mode =~ /^ro?$/) { $writing = 0; }
+  elsif ($mode =~ /^wo?$/) { $writing = 1; }
+  elsif ($mode eq 'rw')    { $writing = 1; }
+  elsif ($mode eq 'a')     { $writing = 0; }
+
+  if ($writing) {
+    $self->_setwrite(1);
+    $self->write_open;
+  } else {
+    $self->_setwrite(0);
+    $self->read_open;
+  }
+
+  $self->write_open if $mode eq 'a';
+  # TODO: writeonly doesn't really work
+}
+
+sub DEMOLISH {
+  my $self = shift;
+  $self->write_close if $self->writing;
+}
 
 # class method
 {
@@ -67,10 +107,34 @@ sub erase {
   # Writing state is left unchanged
   # You want an after method to handle the data
 }
+sub read_open {
+  my $self = shift;
+  die "read while stream opened writeonly" if $self->mode eq 'wo';
+  $self->write_close if $self->writing;
+  my $file = $self->file;
+  if (defined $file) {
+    open(my $fp, "<", $file) or die "Cannot open read file $file: $!\n";
+    # Turn off file linking while calling from_raw
+    my $mode = $self->mode;
+    $self->_setfile( undef );
+    $self->mode( 'rw' );
+    my $bits = <$fp>;
+    {
+      local $/;
+      $self->from_raw( <$fp>, $bits );
+    }
+    close $fp;
+    # link us back.
+    $self->_setfile( $file );
+    $self->mode( $mode );
+  }
+  1;
+}
 sub write_open {
   my $self = shift;
+  die "write while stream opened readonly" if $self->mode eq 'ro';
   if (!$self->writing) {
-    $self->_set_write(1);
+    $self->_setwrite(1);
     # pos is now ignored
   }
   1;
@@ -78,8 +142,16 @@ sub write_open {
 sub write_close {
   my $self = shift;
   if ($self->writing) {
-    $self->_set_write(0);
+    $self->_setwrite(0);
     $self->_setpos($self->len);
+
+    my $file = $self->file;
+    if (defined $file) {
+      open(my $fp, ">", $file) or die "Cannot open file $file: $!\n";
+      print $fp $self->len, "\n";
+      print $fp $self->to_raw;
+      close $fp;
+    }
   }
   1;
 }

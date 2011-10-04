@@ -36,26 +36,25 @@ my @encodings = qw|
 # These files contain a lot of gamma encoded numbers generated from a
 # multidimensional prediction algorithm.  They should be between 0 and 510,
 # hence fit in 9 bits (generated from signed pixel differences).
-my $file = '3d-gamma.raw';
-#my $file = '4d-gamma.raw';
+my $file = '3d-unary.raw';
+#my $file = '4d-unary.raw';
 my @list;
+my $listn;
 {
-  open(my $fp, "<", $file) or die;
-  my $bits = <$fp>;
-  my $rawdata = join('', <$fp>);
-  close $fp;
-  my $stream = Data::BitStream->new;
-  $stream->from_raw($rawdata, $bits);
-  $stream->rewind_for_read;
-  @list = $stream->get_gamma(-1);
+  my $s1 = [gettimeofday];
+  my $stream = Data::BitStream->new( file => $file, mode => 'ro' );
+  my $e1 = int(tv_interval($s1)*1_000_000);
+  my $s2 = [gettimeofday];
+  @list = $stream->get_unary(-1);
+  my $e2 = int(tv_interval($s2)*1_000_000);
+  $listn = scalar @list;
+  printf "Slurped $listn numbers in %.1f ms, decoded in %.1f ms\n", $e1/1000,$e2/1000;
 }
 
-print "List holds ", scalar @list, " numbers\n";
-
 # average value
-my $avg = int( ((sum @list) / scalar @list) + 0.5);
+my $avg = int( ((sum @list) / $listn) + 0.5);
 # bytes required in fixed size (FOR encoding)
-my $bytes = int(ceillog2(max @list) * scalar @list / 8);
+my $bytes = int(ceillog2(max @list) * $listn / 8);
 
 
 print "List (avg $avg, max ", max(@list), ", $bytes binary):\n";
