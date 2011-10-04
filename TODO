@@ -11,6 +11,17 @@
   go all out and write something that makes a SV string with all
   our methods supported.
 
+- Would be nice to do Moo/Mouse/Moose interchangably.  Any::Mouse, basically.
+  mst says he's moving Moo toward a Mouse replacement, but at the moment there
+  are a lot of changes to the module source between the two.  See:
+
+    https://gist.github.com/1259851
+
+- text code needs some redoing
+
+- tie to a file to avoid holding everything in memory.
+  Either File::Map or PerlIO :mmap or Sys::Mmap
+
 CODES:
 
 - m > 2 Fibonacci codes
