@@ -114,6 +114,7 @@ sub read_open {
   my $file = $self->file;
   if (defined $file) {
     open(my $fp, "<", $file) or die "Cannot open read file $file: $!\n";
+    binmode $fp;
     # Turn off file linking while calling from_raw
     my $mode = $self->mode;
     $self->_setfile( undef );
@@ -148,6 +149,7 @@ sub write_close {
     my $file = $self->file;
     if (defined $file) {
       open(my $fp, ">", $file) or die "Cannot open file $file: $!\n";
+      binmode $fp;
       print $fp $self->len, "\n";
       print $fp $self->to_raw;
       close $fp;
