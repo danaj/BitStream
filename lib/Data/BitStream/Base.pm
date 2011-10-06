@@ -13,9 +13,13 @@ use Mouse::Role;
 # pos is ignored while writing
 has 'pos'     => (is => 'ro', isa => 'Int', writer => '_setpos', default => 0);
 has 'len'     => (is => 'ro', isa => 'Int', writer => '_setlen', default => 0);
-has 'writing' => (is => 'ro', isa => 'Bool',writer => '_setwrite', default=>1);
-has 'file'    => (is => 'ro', writer => '_setfile', default => undef);
 has 'mode'    => (is => 'rw', default => 'rdwr');
+
+has 'file'         => (is => 'ro', writer => '_setfile');
+has 'fheader'      => (is => 'ro', writer => '_setfheader');
+has 'fheaderlines' => (is => 'ro');
+
+has 'writing' => (is => 'ro', isa => 'Bool',writer => '_setwrite', default=>1);
 
 # Useful for testing, but time consuming.  Not so bad now that all the test
 # suites call put_*  ~30 times with a list instead of per-value ~30,000 times.
@@ -114,6 +118,15 @@ sub read_open {
   my $file = $self->file;
   if (defined $file) {
     open(my $fp, "<", $file) or die "Cannot open read file $file: $!\n";
+    my $headerlines = $self->fheaderlines;
+    if (defined $headerlines) {
+      # Read in their header
+      my $header = '';
+      while ($headerlines-- > 0) {
+        $header .= <$fp>;
+      }
+      $self->_setfheader($header);
+    }
     binmode $fp;
     # Turn off file linking while calling from_raw
     my $mode = $self->mode;
@@ -149,6 +162,8 @@ sub write_close {
     my $file = $self->file;
     if (defined $file) {
       open(my $fp, ">", $file) or die "Cannot open file $file: $!\n";
+      my $header = $self->fheader;
+      print $fp $header, "\n" if defined $header && length($header) > 0;
       binmode $fp;
       print $fp $self->len, "\n";
       print $fp $self->to_raw;

@@ -20,21 +20,23 @@ use Imager;
 sub die_usage {
   my $usage =<<EOU;
 Usage:
-          -c [-method <code>]  -i <image file>
-          -d [-method <code>]  -i <code file>
+          -c [-method <code>]  -i <image file> -o <code file>
+          -d [-method <code>]  -i <code file>  -o <image file>
 EOU
 
   die $usage;
 }
 
-my $method = 'Gamma';
+my $method;
 my $c = 0;
 my $d = 0;
 my $input_file = '-';
+my $output_file = '-';
 GetOptions('help|usage|?' => sub { die_usage() },
            'c' => \$c,
            'd' => \$d,
            'i=s' => \$input_file,
+           'o=s' => \$output_file,
            'method=s' => \$method);
 
 die_usage if ($c && $d) || (!$c && !$d);
@@ -71,11 +73,19 @@ if ($c) {
   # Image header:
   my ($width, $height, $planes, $mask) = $image->i_img_info;
   # We're only doing grayscale for now
-  $image = $image->convert(preset=>'gray') if $planes > 1;
+  if ($planes > 1) {
+    $image = $image->convert(preset=>'gray');
+    $planes = 1;
+  }
 
-  # Open up stdout as the stream
-  my $outfile = 'out.cmp';
-  my $stream = Data::BitStream->new( file => $outfile, mode => 'w' );
+  # Choose the default method if they didn't select one
+  $method = 'Gamma' unless defined $method;
+
+  # Start up the stream
+  my $stream = Data::BitStream->new(
+        file => $output_file,
+        fheader => "BSC $method w$width h$height p$planes",
+        mode => 'w' );
 
   my @nvals;
   my @vals;
@@ -108,9 +118,21 @@ if ($c) {
 }
 
 if ($d) {
-  my $stream = Data::BitStream->new( file => $input_file, mode => 'ro' );
+  my $stream = Data::BitStream->new(
+        file => $input_file,
+        fheaderlines => 1,
+        mode => 'ro' );
 
-  my ($width, $height, $planes, $mask) = (637, 825, 1, undef);
+  my $header = $stream->fheader;
+  die "$input_file is not a BSC compressed image\n" unless $header =~ /^BSC /;
+  my ($cmethod, $width, $height, $planes) = $header =~ /^BSC (\S+) w(\d+) h(\d+) p(\d+)/;
+  print "$width x $height x $planes image compressed with $cmethod encoding\n";
+
+  if ( defined $method && $cmethod ne $method ) {
+    warn "Overriding $cmethod with $method encoding";
+    $cmethod = $method;
+  }
+
   my $image = Imager->new(xsize=>$width, ysize=>$height,channels=>$planes);
 
   my @nvals;
@@ -119,7 +141,7 @@ if ($d) {
     @nvals = @vals;
     @vals = ();
     # get a line worth of absolute deltas
-    my @deltas = $stream->code_get($method, $width);
+    my @deltas = $stream->code_get($cmethod, $width);
     die "short code read" unless @deltas == $width;
     # convert them to signed deltas
     map { $_ = ( ($_&1) == 0) ? $_ >> 1 : -(($_+1) >> 1); } @deltas;
@@ -132,8 +154,7 @@ if ($d) {
     my @colors = map { Imager::Color->new(gray=>$_); } @vals;
     $image->setscanline(y=>$y, type=>'8bit', pixels=>\@colors);
   }
-  my $outfile = 'out.pgm';
-  $image->write(file=>$outfile) or die $image->errstr;
+  $image->write(file=>$output_file) or die $image->errstr;
 }
 
 
