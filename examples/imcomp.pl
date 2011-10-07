@@ -41,6 +41,12 @@ use Imager;
 #       - contexts would help a lot
 #       - Should read from stdin and write to stdout if desired.
 
+my %transform_info = (
+  'YCOCG' => [ 'YCoCg', \&decorrelate_YCoCg, \&correlate_YCoCg ],
+  'RCT'   => [ 'RCT',   \&decorrelate_RCT,   \&correlate_RCT   ],
+  'RGB'   => [ 'RGB',   undef,               undef             ],
+);
+
 sub die_usage {
   my $usage =<<EOU;
 Usage:
@@ -53,7 +59,7 @@ Usage:
 
          [-code <code>]    encoding method for pixel deltas:
                                Gamma (default), Delta, Omega, Fibonacci,
-                               EvenRodeh, Levenstein, FibC2,
+                               EvenRodeh, Levenstein, FibC2, ARice(n),
                                Rice(n), Golomb(n), GammaGolomb(n), ExpGolomb(n),
                                StartStop(#-#-...), etc.
          [-transform <tf>] use a lossless color transform for color images:
@@ -71,41 +77,40 @@ EOU
   die $usage;
 }
 
-# TODO: Change this to a GetOptions hash
-my $code;
-my $transform;
-my $predictor;
-my $c = 0;
-my $d = 0;
-my $input_file;
-my $output_file;
-GetOptions('help|usage|?' => sub { die_usage() },
-           'c' => \$c,
-           'd' => \$d,
-           'i=s' => \$input_file,
-           'o=s' => \$output_file,
-           'code=s' => \$code,
-           'predict=s' => \$predictor,
-           'transform=s' => \$transform);
+my %opts = (
+            'help|usage|?' => sub { die_usage() },
+          );
+GetOptions( \%opts,
+           'help|usage|?',
+           'c',
+           'd',
+           'i=s',
+           'o=s',
+           'code=s',
+           'predict=s',
+           'transform=s',
+          ) or die_usage;
 
-die_usage if ($c && $d) || (!$c && !$d);
-die_usage unless defined $input_file && defined $output_file;
+die_usage if !defined $opts{'c'} && !defined $opts{'d'};
+die_usage unless defined $opts{'i'} && defined $opts{'o'};
+die_usage if defined $opts{'c'} && defined $opts{'d'};
 
-# standardize transform names
-# Clean this.
-TODO: 
-if (defined $transform) {
-  if    (uc $transform eq 'YCOCG') { $transform = 'YCoCg'; }
-  elsif (uc $transform eq 'RCT'  ) { $transform = 'RCT';   }
-  elsif (uc $transform eq 'RGB'  ) { $transform = 'RGB';   }
-  elsif (uc $transform eq 'BGR'  ) { $transform = 'BGR';   }
-  else { die "Unknown transform: $transform"; }
+if (defined $opts{'c'}) {
+  compress_file( $opts{'i'},
+                 $opts{'o'},
+                 $opts{'code'}        || 'Gamma',
+                 uc ($opts{'predict'} || 'MED'),
+                 $opts{'transform'}   || 'YCoCg',
+               );
+} else {
+  decompress_file( $opts{'i'}, $opts{'o'} );
 }
+
 
 
 # TODO: Consider dispatch table
 sub predict {
-  my ($x, $y, $width, $r, $rn, $rnn) = @_;
+  my ($predictor, $x, $y, $width, $r, $rn, $rnn) = @_;
   die unless defined $predictor;
   my $pred;
 
@@ -194,87 +199,79 @@ sub predict {
 # transforms, but it clamps the results to 0-255, which makes it useless.
 # Too bad, because it's easy and fast.
 
-sub decor_colors {
-  my $to = shift;
-  my $decor = shift;
+# RCT: JPEG2000 lossless integer
+sub decorrelate_RCT {
   my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
 
-  return if $to eq 'RGB';
+  @{$rcolors} = map { my ($r, $g, $b) = @{$_};
+                      my $Y  = POSIX::floor( ($r + 2*$g + $b) / 4 );
+                      my $Cb = $r - $g;
+                      my $Cr = $b - $g;
+                      [ ($Y,$Cb,$Cr) ];
+                    } @{$rcolors};
+}
+sub correlate_RCT {
+  my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
 
-  my $p = @{$rcolors->[0]};
-  return if $p == 1;
-  die unless $p == 3;
-
-  my $w = @{$rcolors};
-
-  my(@ys,@us,@vs);
-  foreach my $x (0 .. $w-1) {
-    my($r,$g,$b) = @{$rcolors->[$x]};
-    my($y,$u,$v) = ($r,$g,$b);
-    if ($to eq 'RCT') { # JPEG2000 lossless integer transform
-      if ($decor) {
-        $y =  POSIX::floor( ($r + 2*$g + $b) / 4 );
-        $u =  ($r-$g);
-        $v =  ($b-$g);
-      } else {
-        $g = $y - POSIX::floor( ($u+$v)/4 );
-        $r = $u + $g;
-        $b = $v + $g;
-      }
-    } elsif ($to eq 'YCoCg') { # Malvar's lossless, from SPIE'08
-      if ($decor) {
-        my $co = $r - $b;
-        my $t = $b + POSIX::floor($co/2);
-        my $cg = $g - $t;
-        $y = $t + POSIX::floor($cg/2);
-        $u = $co;
-        $v = $cg;
-      } else {
-        my $co = $u;
-        my $cg = $v;
-        my $t = $y - POSIX::floor($cg/2);
-        $g = $cg + $t;
-        $b = $t - POSIX::floor($co/2);
-        $r = $b + $co;
-      }
-    } elsif ($to eq 'BGR') { # Just for testing
-      if ($decor) {
-        ($y,$u,$v) = ($b,$g,$r);
-      } else {
-        ($r,$g,$b) = ($v,$u,$y);
-      }
-    } else {
-      die "Unknown conversion space: $to";
-    }
-    if ($decor) {
-      @{$rcolors->[$x]} = ($y,$u,$v);
-    } else {
-      @{$rcolors->[$x]} = ($r,$g,$b);
-    }
-  }
+  @{$rcolors} = map { my ($Y, $Cb, $Cr) = @{$_};
+                      my $g = $Y - POSIX::floor( ($Cb+$Cr)/4 );
+                      my $r = $Cb + $g;
+                      my $b = $Cr + $g;
+                      [ ($r,$g,$b) ];
+                    } @{$rcolors};
 }
 
+# YCoCg: Malvar's lossless version from his 2008 SPIE lifting paper
+sub decorrelate_YCoCg {
+  my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
 
-if ($c) {
+  @{$rcolors} = map { my ($r, $g, $b) = @{$_};
+                      my $Co = $r - $b;
+                      my $t  = $b + POSIX::floor($Co/2);
+                      my $Cg = $g - $t;
+                      my $Y  = $t + POSIX::floor($Cg/2);
+                      [ ($Y,$Co,$Cg) ];
+                    } @{$rcolors};
+}
+sub correlate_YCoCg {
+  my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
+
+  @{$rcolors} = map { my ($Y, $Co, $Cg) = @{$_};
+                      my $t = $Y - POSIX::floor($Cg/2);
+                      my $g = $Cg + $t;
+                      my $b = $t - POSIX::floor($Co/2);
+                      my $r = $b + $Co;
+                      [ ($r,$g,$b) ];
+                    } @{$rcolors};
+}
+
+sub compress_file {
+  my($infile, $outfile, $code, $predictor, $transform) = @_;
+
   # Use Imager to get the file
   my $image = Imager->new;
   my $idata;
-  $image->read( file => $input_file,  data => \$idata)  or die $image->errstr;
+  $image->read( file => $infile,  data => \$idata)  or die $image->errstr;
   # Image header:
   my ($width, $height, $planes, $mask) = $image->i_img_info;
 
-  # Set defaults
-  $code      = 'Gamma'  unless defined $code;
-  $predictor = 'MED'    unless defined $predictor;
-  $predictor = uc $predictor;
-  $transform = 'YCoCg'  unless defined $transform;
+  my $decor_sub;
+  if (defined $transform) {
+    die "Unknown transform: $transform" unless defined $transform_info{uc $transform};
+    $transform = $transform_info{uc $transform}->[0];  # Canonical name
+    $decor_sub = $transform_info{uc $transform}->[1];  # decorrelation sub
+  }
 
   my $method = "$code/$predictor";
   $method .= "/$transform" if $planes > 1;
 
   # Start up the stream
   my $stream = Data::BitStream->new(
-        file => $output_file,
+        file => $outfile,
         fheader => "BSC $method w$width h$height p$planes",
         mode => 'w' );
 
@@ -290,9 +287,9 @@ if ($c) {
       $colors[$y] = [ map { ($_->rgba)[0] }
                           $image->getscanline(y=>$y, type=>'8bit') ];
 
-      my @val   = @{$colors[$y]};
-      my @nval  = @{$colors[$y-1]};
-      my @nnval = @{$colors[$y-2]};
+      my @val   =              @{$colors[$y  ]};
+      my @nval  = ($y > 0)  ?  @{$colors[$y-1]}  :  ();
+      my @nnval = ($y > 1)  ?  @{$colors[$y-2]}  :  ();
       die "short code read" unless scalar @val == $width;
 
       my @deltas = ();
@@ -300,7 +297,7 @@ if ($c) {
         my $pixel  = $val[$x];
 
         # 1) Predict this pixel.
-        my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
+        my $predict = predict($predictor, $x, $y, $width, \@val, \@nval, \@nnval);
 
         # 2) encode the delta mapped to an unsigned number
         my $delta  = $pixel - $predict;
@@ -322,7 +319,7 @@ if ($c) {
     }
 
     # Decorrelate the color planes for better compression
-    decor_colors($transform, 1, $colors[$y]);
+    $decor_sub->($colors[$y]) if defined $decor_sub;
 
     #foreach my $x (0 .. $width-1) { print "[$y,$x] ", join(' ',@{$ycolors[$x]}), "\n"; }
 
@@ -336,7 +333,7 @@ if ($c) {
         my $pixel  = $val[$x];
 
         # 1) Predict this pixel.
-        my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
+        my $predict = predict($predictor, $x, $y, $width, \@val, \@nval, \@nnval);
 
         # 2) encode the delta mapped to an unsigned number
         my $delta  = $pixel - $predict;
@@ -356,24 +353,33 @@ if ($c) {
 }
 
 
-if ($d) {
+sub decompress_file {
+  my($infile, $outfile) = @_;
+
   # Open the bitstream file with one header line
-  my $stream = Data::BitStream->new( file => $input_file,
+  my $stream = Data::BitStream->new( file => $infile,
                                      fheaderlines => 1,
                                      mode => 'ro' );
 
   # Parse the header line
   my $header = $stream->fheader;
-  die "$input_file is not a BSC compressed image\n" unless $header =~ /^BSC /;
+  die "$infile is not a BSC compressed image\n" unless $header =~ /^BSC /;
 
   my ($method, $width, $height, $planes) =
               $header =~ /^BSC (\S+) w(\d+) h(\d+) p(\d+)/;
   print "$width x $height x $planes image compressed with $method encoding\n";
 
-  ($code, $predictor, $transform) = split('/', $method);
+  my ($code, $predictor, $transform) = split('/', $method);
   die "No code found in header" unless defined $code;
   die "No predictor found in header" unless defined $predictor;
   die "No transform found in header" unless $planes == 1 || defined $transform;
+
+  # Set up transform
+  my $cor_sub;
+  if (defined $transform) {
+    die "Unknown transform: $transform" unless defined $transform_info{uc $transform};
+    $cor_sub = $transform_info{uc $transform}->[2];
+  }
 
   # Start up an Imager object
   my $image = Imager->new( xsize    => $width,
@@ -396,7 +402,7 @@ if ($d) {
       my @nnval = ($y > 1)  ?  map { $_->[$p] } @{$colors[$y-2]}  :  ();
 
       foreach my $x (0 .. $width-1) {
-        my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
+        my $predict = predict($predictor, $x, $y, $width, \@val, \@nval, \@nnval);
         my $pixel = $predict + $deltas[$x];
         push @val, $pixel;
         push @{$ycolors[$x]}, $pixel;
@@ -414,7 +420,7 @@ if ($d) {
         my $ycolors_copy = dclone($colors[$y]);
 
         # Reverse decorrolation
-        decor_colors($transform, 0, $ycolors_copy);
+        $cor_sub->($ycolors_copy) if defined $cor_sub;
 
         foreach my $x (0 .. $width-1) {
           my($r,$g,$b) = @{$ycolors_copy->[$x]};
@@ -427,5 +433,5 @@ if ($d) {
   }
 
   # Write the final image
-  $image->write( file => $output_file)  or die $image->errstr;
+  $image->write( file => $outfile )  or die $image->errstr;
 }
