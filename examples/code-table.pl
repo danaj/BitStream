@@ -4,13 +4,11 @@ use warnings;
 use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
 use Data::BitStream::Code::BoldiVigna;
-use Data::BitStream::Code::Baer;
 use Data::BitStream::Code::Escape;
 
 sub new_stream {
   my $stream = Data::BitStream->new();
   Data::BitStream::Code::BoldiVigna->meta->apply($stream);
-  Data::BitStream::Code::Baer->meta->apply($stream);
   Data::BitStream::Code::Escape->meta->apply($stream);
   return $stream;
 }

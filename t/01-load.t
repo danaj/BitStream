@@ -14,8 +14,8 @@ can_ok($stream, @methods);
 
 ok(!$stream->can('has'));
 
-require_ok 'Data::BitStream::Code::Baer';
-Data::BitStream::Code::Baer->meta->apply($stream);
-can_ok($stream, 'get_baer', 'put_baer');
+require_ok 'Data::BitStream::Code::Escape';
+Data::BitStream::Code::Escape->meta->apply($stream);
+can_ok($stream, 'get_escape', 'put_escape');
 
 done_testing;

@@ -3,7 +3,6 @@ use strict;
 use warnings;
 #use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
-use Data::BitStream::Code::Baer;
 use Test::More;
 
 my @codes = qw|
@@ -55,7 +54,6 @@ foreach my $code (@codes) {
 }
 
 my $stream = Data::BitStream->new;
-Data::BitStream::Code::Baer->meta->apply($stream);
 my $mod = 8000;
 
 foreach my $code (@codes) {

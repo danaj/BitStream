@@ -4,12 +4,10 @@ use warnings;
 
 use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
-use Data::BitStream::Code::Baer;
 use Data::BitStream::Code::Escape;
 
 my $stream = Data::BitStream->new();
 die unless defined $stream;
-Data::BitStream::Code::Baer->meta->apply($stream);
 Data::BitStream::Code::Escape->meta->apply($stream);
 
 my $p = 0;

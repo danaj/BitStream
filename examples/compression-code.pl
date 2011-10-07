@@ -29,6 +29,7 @@ my @encodings = qw|
   omega
   ss(0-0-1-1-7)
   levenstein
+  arice(2)
   gamma
   baer(-4)
 |;

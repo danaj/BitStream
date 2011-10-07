@@ -49,7 +49,6 @@ sub impl_list {
   
 use Data::BitStream::Code::Escape;
 use Data::BitStream::Code::BoldiVigna;
-use Data::BitStream::Code::Baer;
 
 sub new_stream {
   my $type = lc shift;
@@ -59,7 +58,6 @@ sub new_stream {
   my $stream = $constructor->();
   Data::BitStream::Code::Escape->meta->apply($stream);
   Data::BitStream::Code::BoldiVigna->meta->apply($stream);
-  Data::BitStream::Code::Baer->meta->apply($stream);
   return $stream;
 }
 
@@ -67,7 +65,7 @@ my $maxbits = Data::BitStream::String::maxbits();
 
 sub is_universal {
   my $enc = lc shift;
-  return 1 if $enc =~ /^(gamma|delta|omega|evenrodeh|fib|fibc2|escape|gg|eg|lev|bvzeta|baer)\b/;
+  return 1 if $enc =~ /^(gamma|delta|omega|evenrodeh|fib|fibc2|escape|gg|eg|lev|bvzeta|baer|arice)\b/;
   return 1 if $enc =~ /^(delta|omega|fib|fibc2|er)gol\b/;
   return 1 if $enc =~ /^binword\($maxbits\)$/;
   return 0;
@@ -116,6 +114,7 @@ my %esubs = (
   'eg'     => sub { my $stream=shift; my $p=shift; $stream->put_expgolomb($p,@_) },
   'bvzeta' => sub { my $stream=shift; my $p=shift; $stream->put_boldivigna($p,@_) },
   'baer'   => sub { my $stream=shift; my $p=shift; $stream->put_baer($p,@_) },
+  'arice'  => sub { my $stream=shift; my $p=shift; $stream->put_arice($p,@_) },
   # Non-Universal
   'unary'  => sub { my $stream=shift; my $p=shift; $stream->put_unary(@_) },
   'golomb' => sub { my $stream=shift; my $p=shift; $stream->put_golomb($p,@_) },
@@ -142,6 +141,7 @@ my %dsubs = (
   'eg'     => sub { my $stream=shift; my $p=shift; $stream->get_expgolomb($p,@_) },
   'bvzeta' => sub { my $stream=shift; my $p=shift; $stream->get_boldivigna($p,@_) },
   'baer'   => sub { my $stream=shift; my $p=shift; $stream->get_baer($p,@_) },
+  'arice'  => sub { my $stream=shift; my $p=shift; $stream->get_arice($p,@_) },
   # Non-Universal
   'unary'  => sub { my $stream=shift; my $p=shift; $stream->get_unary(@_) },
   'golomb' => sub { my $stream=shift; my $p=shift; $stream->get_golomb($p,@_) },

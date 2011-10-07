@@ -9,6 +9,7 @@ lib/Data/BitStream/BitVec.pm
 lib/Data/BitStream/String.pm
 lib/Data/BitStream/Vec.pm
 lib/Data/BitStream/WordVec.pm
+lib/Data/BitStream/Code/ARice.pm
 lib/Data/BitStream/Code/Baer.pm
 lib/Data/BitStream/Code/BoldiVigna.pm
 lib/Data/BitStream/Code/Delta.pm
@@ -46,11 +47,12 @@ t/range.t
 t/raw_size.t
 t/text.t
 t/lib/BitStreamTest.pm
-examples/3d-gamma.raw
+examples/3d-unary.raw
 examples/bench-codes.pl
 examples/bench-copy.pl
 examples/code-table.pl
 examples/compression-code.pl
+examples/imcomp.pl
 examples/integercoding.pl
 examples/rand-geo.pl
 examples/test-ic.pl

@@ -231,6 +231,12 @@ add_code({'package'   => __PACKAGE__,
           'params'    => 1,
           'encodesub' => sub {shift->put_escape([split('-',shift)], @_)},
           'decodesub' => sub {shift->get_escape([split('-',shift)], @_)}, } );
+add_code({'package'   => __PACKAGE__,
+          'name'      => 'ARice',
+          'universal' => 1,
+          'params'    => 1,
+          'encodesub' => sub {shift->put_arice(@_)},
+          'decodesub' => sub {shift->get_arice(@_)} } );
 
 
 no Mouse;
