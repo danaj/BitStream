@@ -12,18 +12,26 @@ use Imager;
 #
 # Very simple example lossless image compressor.
 #
-# Example:
+# Examples:
 # 
-#   perl imcomp.pl  -c  -i art.ppm  -o c.bsc
-#   perl imcomp.pl  -c  -predict gap  -transform rct \
-#                       -code 'startstop(0-1-2-3-3-3-3)' \
-#                       -i art.ppm  -o c.bsc
+#  Compress art.ppm -> c.bsc using defaults
+#
+#      perl imcomp.pl  -c  -i art.ppm  -o c.bsc
+#
+#  Compress art.ppm -> c.bsc with custom settings
+#
+#      perl imcomp.pl  -c  -predict gap  -transform rct \
+#                          -code 'startstop(0-1-2-3-3-3-3)' \
+#                          -i art.ppm  -o c.bsc
+#
+#  Decompress c.bsc -> c.ppm
 #
 #   perl imcomp.pl  -d  -i c.bsc  -o c.ppm
 #
 # Note: This is for demonstration.  It runs ~100x slower than similar C code,
 # and it is quite a bit simpler than systems like JPEG-LS, CALIC, JPEG2000,
-# HDPhoto, etc.  It will typically beat gzip, bzip2, lzma however.
+# HDPhoto, etc.  It will typically beat gzip, bzip2, lzma however.  The speed
+# can be improved with some work, mostly in the Data::BitStream library.
 #
 # Note that without any run length encoding, this sort of compression will be
 # be limited to 1 bit per pixel, or a maximum 8x compression ratio.
@@ -63,6 +71,7 @@ EOU
   die $usage;
 }
 
+# TODO: Change this to a GetOptions hash
 my $code;
 my $transform;
 my $predictor;
@@ -83,6 +92,8 @@ die_usage if ($c && $d) || (!$c && !$d);
 die_usage unless defined $input_file && defined $output_file;
 
 # standardize transform names
+# Clean this.
+TODO: 
 if (defined $transform) {
   if    (uc $transform eq 'YCOCG') { $transform = 'YCoCg'; }
   elsif (uc $transform eq 'RCT'  ) { $transform = 'RCT';   }
@@ -92,6 +103,7 @@ if (defined $transform) {
 }
 
 
+# TODO: Consider dispatch table
 sub predict {
   my ($x, $y, $width, $r, $rn, $rnn) = @_;
   die unless defined $predictor;
@@ -180,6 +192,7 @@ sub predict {
 
 # It would be great to just use Imager's matrix convert for the color
 # transforms, but it clamps the results to 0-255, which makes it useless.
+# Too bad, because it's easy and fast.
 
 sub decor_colors {
   my $to = shift;
@@ -246,7 +259,7 @@ if ($c) {
   # Use Imager to get the file
   my $image = Imager->new;
   my $idata;
-  $image->read(file=>$input_file, data=>\$idata) or die $image->errstr;
+  $image->read( file => $input_file,  data => \$idata)  or die $image->errstr;
   # Image header:
   my ($width, $height, $planes, $mask) = $image->i_img_info;
 
@@ -273,64 +286,68 @@ if ($c) {
     # predict-encode operation without getting bogged down in Imager and color
     # plane decorrolation.
     if ($planes == 1) {
-      my @cy = map { ($_->rgba)[0] } $image->getscanline(y=>$y, type=>'8bit');
-      $colors[$y] = [@cy];
+      # Get scanline from imager, and extract the 8-bit color value
+      $colors[$y] = [ map { ($_->rgba)[0] }
+                          $image->getscanline(y=>$y, type=>'8bit') ];
 
       my @val   = @{$colors[$y]};
       my @nval  = @{$colors[$y-1]};
       my @nnval = @{$colors[$y-2]};
+      die "short code read" unless scalar @val == $width;
+
       my @deltas = ();
       foreach my $x (0 .. $width-1) {
-        my $g  = $val[$x];
-        die unless defined $g;
+        my $pixel  = $val[$x];
 
         # 1) Predict this pixel.
         my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
 
-        # 2) encode
-        my $delta = $g - $predict;
-        my $abs = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
-        push @deltas, $abs;
+        # 2) encode the delta mapped to an unsigned number
+        my $delta  = $pixel - $predict;
+        my $udelta = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
+        push @deltas, $udelta;
       }
       $stream->code_put($code, @deltas);
       next;
     }
 
-    # Get scanline of colors, convert to RGB, decorrolate, put in @colors
     {
-      my @cy = $image->getscanline(y=>$y, type=>'8bit');
-      my @ycolors;  # ycolors[$x]->[$p];
-      foreach my $c (@cy) {
-        push @ycolors, [ ($c->rgba)[0..$planes-1] ];
+      # Get a scanline of colors and convert to RGB
+      my @rgbcolors;
+      foreach my $c ( $image->getscanline(y => $y, type => '8bit') ) {
+        push @rgbcolors, [ ($c->rgba)[0 .. $planes-1] ]
       }
-#foreach my $x (0 .. $width-1) { print "[$y,$x] ", join(' ',@{$ycolors[$x]}), "\n"; }
-      # Decorrolate color planes
-      decor_colors($transform, 1, \@ycolors);
-      # put into colors[y] array
-      $colors[$y] = [ @ycolors ];
+      die "short image read" unless scalar @rgbcolors == $width;
+      $colors[$y] = [ @rgbcolors ];
     }
 
+    # Decorrelate the color planes for better compression
+    decor_colors($transform, 1, $colors[$y]);
+
+    #foreach my $x (0 .. $width-1) { print "[$y,$x] ", join(' ',@{$ycolors[$x]}), "\n"; }
+
     foreach my $p (0 .. $planes-1) {
-      my @val   = map { $_->[$p] } @{$colors[$y]};
-      my @nval  = (); @nval  = map { $_->[$p] } @{$colors[$y-1]} if $y > 0;
-      my @nnval = (); @nnval = map { $_->[$p] } @{$colors[$y-2]} if $y > 1;
+      my @val   =              map { $_->[$p] } @{$colors[$y  ]};
+      my @nval  = ($y > 0)  ?  map { $_->[$p] } @{$colors[$y-1]}  :  ();
+      my @nnval = ($y > 1)  ?  map { $_->[$p] } @{$colors[$y-2]}  :  ();
 
       my @deltas = ();
       foreach my $x (0 .. $width-1) {
-        my $g  = $val[$x];
-        die unless defined $g;
+        my $pixel  = $val[$x];
 
         # 1) Predict this pixel.
         my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
 
-        # 2) encode
-        my $delta = $g - $predict;
-        my $abs = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
-        push @deltas, $abs;
+        # 2) encode the delta mapped to an unsigned number
+        my $delta  = $pixel - $predict;
+        my $udelta = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
+        push @deltas, $udelta;
       }
       $stream->code_put($code, @deltas);
     }
   }
+
+  # Close the stream, which will flush the file
   $stream->write_close;
   my $origsize = $width * $height * $planes;
   my $compsize = int( ($stream->len + 7) / 8);
@@ -338,70 +355,77 @@ if ($c) {
          $origsize, $method, $compsize, $origsize / $compsize;
 }
 
-if ($d) {
-  my $stream = Data::BitStream->new(
-        file => $input_file,
-        fheaderlines => 1,
-        mode => 'ro' );
 
+if ($d) {
+  # Open the bitstream file with one header line
+  my $stream = Data::BitStream->new( file => $input_file,
+                                     fheaderlines => 1,
+                                     mode => 'ro' );
+
+  # Parse the header line
   my $header = $stream->fheader;
   die "$input_file is not a BSC compressed image\n" unless $header =~ /^BSC /;
-  my ($method, $width, $height, $planes) = $header =~ /^BSC (\S+) w(\d+) h(\d+) p(\d+)/;
+
+  my ($method, $width, $height, $planes) =
+              $header =~ /^BSC (\S+) w(\d+) h(\d+) p(\d+)/;
   print "$width x $height x $planes image compressed with $method encoding\n";
+
   ($code, $predictor, $transform) = split('/', $method);
   die "No code found in header" unless defined $code;
   die "No predictor found in header" unless defined $predictor;
   die "No transform found in header" unless $planes == 1 || defined $transform;
 
-  my $image = Imager->new(xsize=>$width, ysize=>$height,channels=>$planes);
+  # Start up an Imager object
+  my $image = Imager->new( xsize    => $width,
+                           ysize    => $height,
+                           channels => $planes);
 
   my @colors;   # [$y]->[$x]->[$p]
   foreach my $y (0 .. $height-1) {
     $colors[$y-3] = undef if $y >= 3;   # remove unneeded y values
 
     my @ycolors;  # ycolors[$x]->[$p];
-    foreach my $x (0 .. $width-1) {
-      $ycolors[$x] = [];
-    }
     foreach my $p (0 .. $planes-1) {
-      # get a line worth of absolute deltas
-      my @deltas = $stream->code_get($code, $width);
-      die "short code read" unless @deltas == $width;
-      # convert them to signed deltas
-      map { $_ = ( ($_&1) == 0) ? $_ >> 1 : -(($_+1) >> 1); } @deltas;
+      # get a line worth of absolute deltas and convert them to signed
+      my @deltas = map { (($_&1) == 0)  ?  $_ >> 1  :  -(($_+1) >> 1); }
+                   $stream->code_get($code, $width);
+      die "short code read" unless scalar @deltas == $width;
 
       my @val   = ();
-      my @nval  = (); @nval  = map { $_->[$p] } @{$colors[$y-1]} if $y > 0;
-      my @nnval = (); @nnval = map { $_->[$p] } @{$colors[$y-2]} if $y > 1;
+      my @nval  = ($y > 0)  ?  map { $_->[$p] } @{$colors[$y-1]}  :  ();
+      my @nnval = ($y > 1)  ?  map { $_->[$p] } @{$colors[$y-2]}  :  ();
 
       foreach my $x (0 .. $width-1) {
         my $predict = predict($x, $y, $width, \@val, \@nval, \@nnval);
-        my $g = $predict + $deltas[$x];
-        push @val, $g;
-        push $ycolors[$x], $g;
+        my $pixel = $predict + $deltas[$x];
+        push @val, $pixel;
+        push @{$ycolors[$x]}, $pixel;
       }
     }
     $colors[$y] = [@ycolors];
 
     # set the scanline
-    my @icolors;
-    if ($planes == 1) {
-      @icolors = map { Imager::Color->new(gray=>$_->[0]); } @ycolors;
-    } else {
-      my $yc = dclone($colors[$y]);
+    {
+      my @icolors;
+      if ($planes == 1) {
+        @icolors = map { Imager::Color->new(gray => $_->[0]); } @ycolors;
+      } else {
+        # operate on a copy of colors so we ensure it's not changed.
+        my $ycolors_copy = dclone($colors[$y]);
 
-      # Recorrolate color planes
-      decor_colors($transform, 0, $yc);
+        # Reverse decorrolation
+        decor_colors($transform, 0, $ycolors_copy);
 
-      foreach my $x (0 .. $width-1) {
-        my($r,$g,$b) = @{$yc->[$x]};
-        #print "[$y,$x] ", join(' ',@{$yc->[$x]}), "\n";
-        push @icolors, Imager::Color->new(r=>$r,g=>$g,b=>$b);
+        foreach my $x (0 .. $width-1) {
+          my($r,$g,$b) = @{$ycolors_copy->[$x]};
+          #print "[$y,$x] $r $g $b\n";
+          push @icolors, Imager::Color->new(r=>$r, g=>$g, b=>$b);
+        }
       }
+      $image->setscanline( y => $y,  type => '8bit',  pixels => \@icolors );
     }
-    $image->setscanline(y=>$y, type=>'8bit', pixels=>\@icolors);
   }
 
-  # Reverse decorrolation
-  $image->write(file=>$output_file) or die $image->errstr;
+  # Write the final image
+  $image->write( file => $output_file)  or die $image->errstr;
 }
