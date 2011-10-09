@@ -4,8 +4,9 @@ use warnings;
 
 $| = 1;  # fast pipes
 
-# Load up the integercoding.pl routines, ignore the program
-eval {require 'integercoding.pl'; };
+# Load up the integercoding.pl routines directly from that file
+require 'integercoding.pl';
+IntegerCoding->import;
 
 use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;

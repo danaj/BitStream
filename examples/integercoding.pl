@@ -2,41 +2,23 @@
 use strict;
 use warnings;
 
-sub die_usage { die "Usage: -encode|-decode unary|gamma|delta|omega|fib\n"; }
+# Simple encoding and decoding using integer codings
+#
+# For more information on these and other codings, see the CPAN module
+# Data::BitStream.
 
-use Getopt::Long;
-my $emethod;
-my $dmethod;
-GetOptions('help|usage|?' => sub { die_usage() },
-           'encode=s' => \$emethod,
-           'decode=s' => \$dmethod);
-die_usage if (defined $emethod and defined $dmethod);
-my $sub;
-if (defined $emethod) {
-  if    ($emethod eq 'unary') { $sub = sub { encode_unary(shift) }; }
-  elsif ($emethod eq 'gamma') { $sub = sub { encode_gamma(shift) }; }
-  elsif ($emethod eq 'delta') { $sub = sub { encode_delta(shift) }; }
-  elsif ($emethod eq 'omega') { $sub = sub { encode_omega(shift) }; }
-  elsif ($emethod eq 'fib'  ) { $sub = sub { encode_fib(shift) }; }
-  else                        { die "Unknown code: $emethod\n"; }
-} elsif (defined $dmethod) {
-  if    ($dmethod eq 'unary') { $sub = sub { decode_unary(shift) }; }
-  elsif ($dmethod eq 'gamma') { $sub = sub { decode_gamma(shift) }; }
-  elsif ($dmethod eq 'delta') { $sub = sub { decode_delta(shift) }; }
-  elsif ($dmethod eq 'omega') { $sub = sub { decode_omega(shift) }; }
-  elsif ($dmethod eq 'fib'  ) { $sub = sub { decode_fib(shift) }; }
-  else                        { die "Unknown code: $dmethod\n"; }
-}
-die_usage unless defined $sub;
+package IntegerCoding;
+require Exporter;
+our @ISA = qw(Exporter);
+our @EXPORT = qw(encode_unary decode_unary
+                 encode_gamma decode_gamma
+                 encode_delta decode_delta
+                 encode_omega decode_omega
+                 encode_fib   decode_fib    );
+our @EXPORT_OK = qw();
 
-
-while (<STDIN>) {
-  chomp;
-  next unless /^\s*\d+\s*$/;   # Ignore all non-digit input
-  die "Must have a binary string for decoding"
-      if (defined $dmethod) && (length($_) == 0 or $_ =~ /[^01]/);
-  print $sub->($_), "\n";
-}
+# If called as a script, parse the args and input.
+&ic_script unless caller;
 
 
 # Helper functions
@@ -173,6 +155,47 @@ sub decode_fib {
   $val;
 }
 
+
+
+
+sub die_usage {
+  my $usage =<<EOU;
+Usage: 
+       --help             This message
+       --encode <method>  Encode with <method  (unary,gamma,delta,omega,fib)
+       --decode <method>  Decode with <method> (unary,gamma,delta,omega,fib)
+EOU
+  die $usage;
+}
+
+use Getopt::Long;
+sub ic_script {
+  my %subs = ( unary => [ \&encode_unary, \&decode_unary ],
+               gamma => [ \&encode_gamma, \&decode_gamma ],
+               delta => [ \&encode_delta, \&decode_delta ],
+               omega => [ \&encode_omega, \&decode_omega ],
+               fib   => [ \&encode_fib,   \&decode_fib   ] );
+  my($encoding, $method, $help);
+  GetOptions('help|usage|?' => \$help,
+             'encode=s' => sub { $encoding = 1; $method = $_[1]; },
+             'decode=s' => sub { $encoding = 0; $method = $_[1]; },
+            ) or die_usage;
+  die_usage if defined $help || !defined $encoding;
+  die "Unknown code: $method\n" unless defined $subs{lc $method};
+  my $sub = $subs{lc $method}->[1-$encoding];
+  die unless defined $sub;
+
+  while (<STDIN>) {
+    chomp;
+    next unless /^\s*\d+\s*$/;   # Ignore all non-digit input
+    die "Must have a binary string for decoding"
+        if (!$encoding) && (length($_) == 0 or $_ =~ /[^01]/);
+    print $sub->($_), "\n";
+  }
+  1;
+}
+
+1;
 __END__
 
 =pod
@@ -231,11 +254,11 @@ using that code.
 The C<decode_> methods take a single binary string as input and produce an
 unsigned integer output decoded from the bit encoding.
 
-  $n = decode_unary('000000000000001');  die unless $n == 14;
-  $n = decode_gamma('0001110');          die unless $n == 14;
-  $n = decode_delta('00100110');         die unless $n == 14;
-  $n = decode_omega('1111100');          die unless $n == 14;
-  $n = decode_fib(  '1000011');          die unless $n == 14;
+  $n = decode_unary('000000000000001');  # die unless $n == 14;
+  $n = decode_gamma('0001110');          # die unless $n == 14;
+  $n = decode_delta('00100110');         # die unless $n == 14;
+  $n = decode_omega('1111100');          # die unless $n == 14;
+  $n = decode_fib(  '1000011');          # die unless $n == 14;
 
 =head1 SEE ALSO
 
