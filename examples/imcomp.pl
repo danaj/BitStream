@@ -1,19 +1,20 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Time::HiRes qw(gettimeofday tv_interval);
 use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream;
 use Getopt::Long;
 use Storable qw(dclone);
+use List::Util qw(sum);
 use POSIX;
 use Imager;
 
 #
-# Very simple example lossless image compressor.  I've added a variety of
-# predictors and a couple decorrelation transforms for better compression,
-# and to make the program more useful for experimentation with different
-# ideas.
+# Simple example lossless image compressor.
+#
+# I've added a variety of predictors and a couple decorrelation transforms
+# both for better compression, and to make the program interesting as a
+# vehicle for experimenting with different ideas.
 #
 # Examples:
 # 
@@ -33,15 +34,14 @@ use Imager;
 #
 # Note: This is for demonstration.  It runs ~100x slower than similar C code,
 # and it is quite a bit simpler than systems like JPEG-LS, CALIC, JPEG2000,
-# HDPhoto, etc.  It will typically beat gzip, bzip2, lzma however.  The speed
-# can be improved with some work, mostly in the Data::BitStream library.
-#
-# Note that without any run length encoding, this sort of compression will be
-# be limited to 1 bit per pixel, or a maximum 8x compression ratio.
+# HDPhoto, etc.  It will typically beat gzip, bzip2, lzma however, and on many
+# inputs it will compress better than JPEG-LS (mostly because of the color
+# transform).  The speed can be improved with some work, mostly in the
+# Data::BitStream library.
 #
 # BUGS / TODO:
-#       - encoding method is extremely simplistic
-#       - contexts would help a lot
+#       - encoding method is simplistic
+#       - contexts with bias correction would help
 #       - Should read from stdin and write to stdout if desired.
 
 my %transform_info = (
@@ -58,6 +58,8 @@ my %predictor_info = (
   'DJMED' => \&predict_djmed,
   'GED2'  => \&predict_ged2,
 );
+
+my $min_runlen_param = 4;   # Parameter for RLE in compression
 
 sub die_usage {
   my $usage =<<EOU;
@@ -84,6 +86,7 @@ Usage:
                                GAP    CALIC gradient
                                GED2   Avramović / Savić
                                DJMED  median of linear predictors
+         [-norun]          perform simpler coding that doesn't look for runs
 EOU
 
   die $usage;
@@ -96,6 +99,7 @@ GetOptions( \%opts,
            'help|usage|?',
            'c',
            'd',
+           'norun',
            'i=s',
            'o=s',
            'code=s',
@@ -198,7 +202,7 @@ sub predict_djmed {
   my $ww = $colors->[$y  ]->[$x-2]->[$p];
   my $nn = $colors->[$y-2]->[$x  ]->[$p];
 
-  my $T = 16;
+  my $T = 32;
   my $gv = abs($nw - $w) + abs($nn - $n);
   my $gh = abs($ww - $w) + abs($nw - $n);
   return $w if ($gv-$gh) >  $T;
@@ -294,6 +298,185 @@ sub correlate_YCoCg {
 
 ###############################################################################
 #
+#              Windowed Bias Calculator (not used)
+#
+###############################################################################
+{
+  my $param_window_size;
+  my @sums;  # one sum per context
+  my @vals;  # vals[$context]->[...]
+  my @context_init;
+
+  sub init_bias {
+    my $context = shift;
+    if (!defined $context_init[$context]) {
+      $param_window_size = 50;
+      $sums[$context] = 0;
+      @{$vals[$context]} = ();
+      $context_init[$context] = 1;
+    }
+ }
+
+  sub bias {
+    my $context = shift;
+    my $newval = shift;
+
+    init_bias($context) unless defined $context_init[$context];
+
+    my $nvals = scalar @{$vals[$context]};
+    my $bias = ($nvals == 0) ? 0 : sprintf("%.0f", $sums[$context] / $nvals);
+
+    push @{$vals[$context]}, $newval;
+    $sums[$context] += $newval;
+
+    if ($nvals == $param_window_size) {
+      $sums[$context] -= shift @{$vals[$context]};
+    }
+    die "vals error" if scalar @{$vals[$context]} > $param_window_size;
+    die "sum error" unless $sums[$context] == sum @{$vals[$context]};
+
+    return $bias;
+  }
+}
+
+###############################################################################
+#
+#              Compression internals, both super-simple and more complex
+#
+###############################################################################
+sub compress_simple {
+  my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
+
+  my @pixels = map { $_->[$p] } @{$rcolors->[$y]};
+  my @deltas;
+
+  foreach my $x (0 .. $width-1) {
+    # 1) Predict this pixel.
+    my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+    # 2) encode the delta mapped to an unsigned number
+    push @deltas, $pixels[$x] - $predict;
+    #my $udelta = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
+  }
+  my @udeltas = map { $_ >= 0  ?  2*$_  :  -2*$_-1 } @deltas;
+  $stream->code_put($code, @udeltas);
+}
+
+sub decompress_simple {
+  my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
+
+  # get a line worth of absolute deltas and convert them to signed
+  my @deltas = map { (($_&1) == 0)  ?  $_ >> 1  :  -(($_+1) >> 1); }
+               $stream->code_get($code, $width);
+  die "short code read" unless scalar @deltas == $width;
+
+  foreach my $x (0 .. $width-1) {
+    my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+    my $pixel = $predict + $deltas[$x];
+    $rcolors->[$y][$x][$p] = $pixel;
+  }
+}
+
+sub compress_complex {
+  my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
+
+  my @pixels = map { $_->[$p] } @{$rcolors->[$y]};
+  my @deltas;
+
+  my $x = 0;
+  while ($x < $width) {
+    my $px = $pixels[$x];
+    # Search for a horizontal run
+    my $runlen = 1;
+    $runlen++ while ($x+$runlen) < $width && $px == $pixels[$x+$runlen];
+    if ($runlen >= $min_runlen_param) {
+      $stream->write(1, 0); # indicate a run
+      # output the run length and the pixel value
+      $stream->put_gamma($runlen-$min_runlen_param);
+      {
+        my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+        push @deltas, $px - $predict;
+      }
+      $x += $runlen;
+    } else {
+      my $litstart = $x;
+      my $nextrun;
+      do {
+        $x++;
+        $nextrun = 1;
+        $nextrun++ while ($x+$nextrun) < $width && 
+                         $pixels[$x] == $pixels[$x+$nextrun] &&
+                         $nextrun < $min_runlen_param;
+      } while (($x+$nextrun) < $width && $nextrun < $min_runlen_param);
+      $x = $width if ($x+$min_runlen_param) >= $width;
+      my $litlen = $x - $litstart;
+      # output the literal length and the pixel values
+      $stream->write(1, 1); # indicate literals
+      $stream->put_gamma($litlen-1);
+      foreach my $lx ($litstart .. $x-1) {
+        my $predict = $predict_sub->($lx, $width, $y, $p, $rcolors);
+        push @deltas, $pixels[$lx] - $predict;
+      }
+    }
+  }
+
+  # We could perform context-based biasing here, something like:
+  #
+  # @deltas = map { $_ - bias($context, $_) } @deltas;
+  #
+  # though we'd want the context adjusting as we go.  This helps center
+  # the predictions around 0.
+
+  my @udeltas = map { $_ >= 0  ?  2*$_  :  -2*$_-1 } @deltas;
+  $stream->code_put($code, @udeltas);
+}
+
+sub decompress_complex {
+  my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
+
+  my $pixels = 0;
+  my $ndeltas = 0;
+  my @interp;
+  while ($pixels < $width) {
+    my $is_lit = $stream->read(1);
+    my $length = $stream->get_gamma;
+    if ($is_lit) {
+      $length += 1;
+      $ndeltas += $length;
+      $pixels += $length;
+    } else {
+      $length += $min_runlen_param;
+      $ndeltas += 1;
+      $pixels += $length;
+    }
+    push @interp, [ $is_lit, $length ];
+  }
+
+  # get a line worth of absolute deltas and convert them to signed
+  my @deltas = map { (($_&1) == 0)  ?  $_ >> 1  :  -(($_+1) >> 1); }
+               $stream->code_get($code, $ndeltas);
+  die "short code read" unless scalar @deltas == $ndeltas;
+
+  my $x = 0;
+  while (scalar @interp > 0) {
+    my ($is_lit, $length) = @{shift @interp};
+    if (!$is_lit) {
+      my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+      my $pixel = $predict + shift @deltas;
+      $rcolors->[$y][$x++][$p] = $pixel  for (1 .. $length);
+    } else {
+      my $last_x = $x + $length;
+      while ($x < $last_x) {
+        my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+        my $pixel = $predict + shift @deltas;
+        $rcolors->[$y][$x][$p] = $pixel;
+        $x++;
+      }
+    }
+  }
+}
+
+###############################################################################
+#
 #              Image Compression
 #
 ###############################################################################
@@ -344,20 +527,11 @@ sub compress_file {
     $decor_sub->($colors[$y]) if defined $decor_sub;
 
     foreach my $p (0 .. $planes-1) {
-      my @pixels = map { $_->[$p] } @{$colors[$y]};
-
-      my @udeltas = ();
-      foreach my $x (0 .. $width-1) {
-        # 1) Predict this pixel.
-        my $predict = $predict_sub->($x, $width, $y, $p, \@colors);
-
-        # 2) encode the delta mapped to an unsigned number
-        my $pixel = $pixels[$x];
-        my $delta  = $pixel - $predict;
-        my $udelta = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
-        push @udeltas, $udelta;
+      if ($opts{'norun'}) {
+        compress_simple($stream, $code, \@colors, $y, $width, $p, $predict_sub);
+      } else {
+        compress_complex($stream,$code, \@colors, $y, $width, $p, $predict_sub);
       }
-      $stream->code_put($code, @udeltas);
     }
   }
 
@@ -417,15 +591,10 @@ sub decompress_file {
     $colors[$y-3] = undef if $y >= 3;   # remove unneeded y values
 
     foreach my $p (0 .. $planes-1) {
-      # get a line worth of absolute deltas and convert them to signed
-      my @deltas = map { (($_&1) == 0)  ?  $_ >> 1  :  -(($_+1) >> 1); }
-                   $stream->code_get($code, $width);
-      die "short code read" unless scalar @deltas == $width;
-
-      foreach my $x (0 .. $width-1) {
-        my $predict = $predict_sub->($x, $width, $y, $p, \@colors);
-        my $pixel = $predict + $deltas[$x];
-        $colors[$y][$x][$p] = $pixel;
+      if ($opts{'norun'}) {
+        decompress_simple($stream, $code, \@colors, $y,$width,$p, $predict_sub);
+      } else {
+        decompress_complex($stream,$code, \@colors, $y,$width,$p, $predict_sub);
       }
     }
 

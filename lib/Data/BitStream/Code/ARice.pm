@@ -60,15 +60,11 @@ sub put_arice {
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
-    my($q, $r);
+    my $q = $val >> $k;
+    (defined $sub)  ?  $sub->($self, $q)  :  $self->put_gamma($q);
     if ($k > 0) {
-      $q = $val >> $k;
-      $r = $val - ($q << $k);
-      (defined $sub)  ?  $sub->($self, $q)  :  $self->put_gamma($q);
+      my $r = $val - ($q << $k);
       $self->write($k, $r);
-    } else {
-      $q = $val;
-      (defined $sub)  ?  $sub->($self, $q)  :  $self->put_gamma($q);
     }
     # adjust k
     $k = _adjust_k($k, $q);
