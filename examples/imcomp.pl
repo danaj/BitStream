@@ -41,6 +41,11 @@ use Imager;
 #
 # BUGS / TODO:
 #       - encoding method is simplistic
+#       - Run mode is making most photo images bigger than not using it.  That
+#         is, simple output is smaller than complex on photo images, though on
+#         smoother images (such as almost any print raster) complex mode will
+#         be far better.  This indicates some more thought is needed in how
+#         we handle the runs vs. literals.
 #       - contexts with bias correction would help
 #       - Should read from stdin and write to stdout if desired.
 
@@ -59,7 +64,7 @@ my %predictor_info = (
   'GED2'  => \&predict_ged2,
 );
 
-my $min_runlen_param = 4;   # Parameter for RLE in compression
+my $min_runlen_param = 3;   # Parameter for RLE in compression
 
 sub die_usage {
   my $usage =<<EOU;
@@ -385,37 +390,52 @@ sub compress_complex {
   my $x = 0;
   while ($x < $width) {
     my $px = $pixels[$x];
-    # Search for a horizontal run
+    my $litlen = 0;
     my $runlen = 1;
+    my $is_run;
+
+    # Search for a horizontal run
     $runlen++ while ($x+$runlen) < $width && $px == $pixels[$x+$runlen];
     if ($runlen >= $min_runlen_param) {
-      $stream->write(1, 0); # indicate a run
-      # output the run length and the pixel value
-      $stream->put_gamma($runlen-$min_runlen_param);
+      $is_run = 1;
       {
         my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
         push @deltas, $px - $predict;
       }
       $x += $runlen;
     } else {
+      $is_run = 0;
       my $litstart = $x;
-      my $nextrun;
-      do {
+      # The runlength break tests aren't very good, but provide a bit of a
+      # balance between low entropy (smooth) and high entropy (photo) images.
+      my $breaklen = $min_runlen_param;
+      while ( ($x+$breaklen) < $width) {
         $x++;
-        $nextrun = 1;
-        $nextrun++ while ($x+$nextrun) < $width && 
-                         $pixels[$x] == $pixels[$x+$nextrun] &&
-                         $nextrun < $min_runlen_param;
-      } while (($x+$nextrun) < $width && $nextrun < $min_runlen_param);
-      $x = $width if ($x+$min_runlen_param) >= $width;
-      my $litlen = $x - $litstart;
-      # output the literal length and the pixel values
-      $stream->write(1, 1); # indicate literals
-      $stream->put_gamma($litlen-1);
+        next if $pixels[$x] != $pixels[$x+1];
+        # we have two matching pixels, see how many we will get
+        $litlen = $x - $litstart;
+        $breaklen = $min_runlen_param;
+        { my $nlits = ($x-$litstart) >> 3; $breaklen++ while ($nlits >>= 1); }
+        $runlen = 2;
+        $runlen++ while ($x+$runlen) < $width && 
+                        $pixels[$x] == $pixels[$x+$runlen] &&
+                        $runlen < $breaklen;
+        # If we found enough, exit
+        last if $runlen >= $breaklen;
+      }
+      $x = $width if ($x+$breaklen) >= $width;
+      $litlen = $x - $litstart;
       foreach my $lx ($litstart .. $x-1) {
         my $predict = $predict_sub->($lx, $width, $y, $p, $rcolors);
         push @deltas, $pixels[$lx] - $predict;
       }
+    }
+    if ($is_run) {
+      $stream->write(1, 0); # indicate a run
+      $stream->put_gamma($runlen-$min_runlen_param);
+    } else {
+      $stream->write(1, 1); # indicate literals
+      $stream->put_gamma($litlen-1);
     }
   }
 
