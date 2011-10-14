@@ -72,15 +72,16 @@ sub DEMOLISH {
   $self->write_close if $self->writing;
 }
 
-# class method
 {
-  my $mbits = 32;
   use Config;
-  $mbits = 64 if defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define';
-  $mbits = 64 if defined $Config{'longsize'} && $Config{'longsize'} >= 8;
+  use constant maxbits =>
+   (   (defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define')
+    || (defined $Config{'use64bitall'} && $Config{'use64bitall'} eq 'define')
+    || (defined $Config{'longsize'} && $Config{'longsize'} >= 8)
+   )
+   ? 64
+   : 32;
   no Config;
-
-  sub maxbits { $mbits; }
 }
 
 sub rewind {
@@ -310,7 +311,7 @@ sub get_unary1 {            # You ought to override this.
 sub put_binword {
   my $self = shift;
   my $bits = shift;
-  die "invalid parameters" if ($bits < 0) || ($bits > $self->maxbits);
+  die "invalid parameters" if ($bits < 0) || ($bits > maxbits);
 
   foreach my $val (@_) {
     $self->write($bits, $val);
@@ -321,7 +322,7 @@ sub get_binword {
   my $self = shift;
   die "get while writing" if $self->writing;
   my $bits = shift;
-  die "invalid parameters" if ($bits < 0) || ($bits > $self->maxbits);
+  die "invalid parameters" if ($bits < 0) || ($bits > maxbits);
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything

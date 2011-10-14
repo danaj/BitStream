@@ -26,6 +26,17 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::StartStop';
 
 has '_vec' => (is => 'rw', default => '');
+{
+  use Config;
+  use constant MAXBITS =>
+   (   (defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define')
+    || (defined $Config{'use64bitall'} && $Config{'use64bitall'} eq 'define')
+    || (defined $Config{'longsize'} && $Config{'longsize'} >= 8)
+   )
+   ? 64
+   : 32;
+  no Config;
+}
 
 
 # Access the raw vector.
@@ -44,7 +55,7 @@ sub read {
   my $self = shift;
   die "get while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= MAXBITS;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
@@ -83,7 +94,7 @@ sub write {
   my $self = shift;
   die "put while reading" unless $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= MAXBITS;
   my $val  = shift;
   die "Undefined value" unless defined $val;
 
@@ -249,7 +260,7 @@ sub put_gamma {
         next;
       }
     } elsif ($val == ~0) {         # Encode ~0 as unary maxbits
-      $len += $self->maxbits;
+      $len += MAXBITS;
       $wpos = $len >> 5;      # / 32
       $bpos = $len & 0x1F;    # % 32
       vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
