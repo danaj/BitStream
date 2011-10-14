@@ -28,12 +28,9 @@ sub put_escape {
   my $p = shift;
   die "p must be an array" unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
 
-  my @parray = @$p;
   my $maxbits = $self->maxbits;
-  map {
-        $_ = $maxbits if (!defined $_) || ($_ > $maxbits);
-        die "invalid parameters" if $_ <= 0;
-      } @parray;
+  my @parray = map { (defined $_ && $_ <= $maxbits) ? $_ : $maxbits } @$p;
+  foreach my $p (@parray) {  die "invalid parameters" if $p <= 0;  }
 
   foreach my $val (@_) {
     my @bitarray = @parray;
@@ -68,12 +65,9 @@ sub get_escape {
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my @parray = @$p;
   my $maxbits = $self->maxbits;
-  map {
-        $_ = $maxbits if (!defined $_) || ($_ > $maxbits);
-        die "invalid parameters" if $_ <= 0;
-      } @parray;
+  my @parray = map { (defined $_ && $_ <= $maxbits) ? $_ : $maxbits } @$p;
+  foreach my $p (@parray) {  die "invalid parameters" if $p <= 0;  }
 
   my @vals;
   while ($count-- > 0) {
