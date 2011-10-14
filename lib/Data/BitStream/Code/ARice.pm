@@ -63,18 +63,24 @@ sub put_arice {
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
-    my $q = $val >> $k;
-    push @q_list, $q;
-    if ($k > 0) {
-      (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
-      @q_list = ();
+    if ($k == 0) {
+      push @q_list, $val;
+      $k++ if $val >= 8;   # _adjust_k shortcut
+    } else {
+      my $q = $val >> $k;
       my $r = $val - ($q << $k);
+      if (@q_list) {
+        push @q_list, $q;
+        (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
+        @q_list = ();
+      } else {
+        (defined $sub)  ?  $sub->($self, $q)  :  $self->put_gamma($q);
+      }
       $self->write($k, $r);
+      $k = _adjust_k($k, $q);
     }
-    # adjust k
-    $k = _adjust_k($k, $q);
   }
-  if (scalar @q_list > 0) {
+  if (@q_list) {
     (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
   }
   $k;
@@ -98,6 +104,18 @@ sub get_arice {
 
   my @vals;
   while ($count-- > 0) {
+    # Optimization, read two values at once if we can
+    if ( ($k == 0) && ($count > 0) ) {
+      my($q1,$q2) = (defined $sub)  ?  $sub->($self, 2)  :  $self->get_gamma(2);
+      last unless defined $q1;
+      push @vals, $q1;
+      $k = _adjust_k($k, $q1);
+      last unless defined $q2;
+      push @vals, ($k == 0)  ?  $q2  :  (($q2 << $k) | $self->read($k));
+      $k = _adjust_k($k, $q2);
+      $count--;
+      next;
+    }
     my $q = (defined $sub)  ?  $sub->($self)  :  $self->get_gamma();
     last unless defined $q;
     push @vals, ($k == 0)  ?  $q  :  (($q << $k) | $self->read($k));
