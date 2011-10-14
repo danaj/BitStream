@@ -412,11 +412,11 @@ sub compress_complex {
       while ( ($x+$breaklen) < $width) {
         $x++;
         next if $pixels[$x] != $pixels[$x+1];
+        if ($pixels[$x] != $pixels[$x+2]) { $x++; next; }
         # we have two matching pixels, see how many we will get
-        $litlen = $x - $litstart;
         $breaklen = $min_runlen_param;
         { my $nlits = ($x-$litstart) >> 3; $breaklen++ while ($nlits >>= 1); }
-        $runlen = 2;
+        $runlen = 3;
         $runlen++ while ($x+$runlen) < $width && 
                         $pixels[$x] == $pixels[$x+$runlen] &&
                         $runlen < $breaklen;
@@ -534,13 +534,14 @@ sub compress_file {
     $colors[$y-3] = undef if $y >= 3;   # remove unneeded y values
 
     {
-      # Get a scanline of colors and convert to RGB
-      my @rgbcolors;
-      foreach my $c ( $image->getscanline(y => $y, type => '8bit') ) {
-        push @rgbcolors, [ ($c->rgba)[0 .. $planes-1] ]
+      # Put a scanline worth of colors into the @colors array
+      my @samples = $image->getsamples( y => $y, type => '8bit' );
+      die "short image read" unless scalar @samples == ($width*$planes);
+      foreach my $x (0 .. $width-1) {
+        foreach my $p (0 .. $planes-1) {
+          $colors[$y]->[$x]->[$p] = $samples[$planes*$x + $p];
+        }
       }
-      die "short image read" unless scalar @rgbcolors == $width;
-      $colors[$y] = [ @rgbcolors ];
     }
 
     # Decorrelate the color planes for better compression
@@ -618,7 +619,8 @@ sub decompress_file {
       }
     }
 
-    # set the scanline
+    # set the scanline.  Imager's setsamples() only works for 16-bit, so use
+    # the less efficient setscanline interface.
     {
       my @icolors;
       if ($planes == 1) {
