@@ -55,19 +55,27 @@ sub put_arice {
     $sub = $k;
     $k = shift;
   }
-
   die "k must be >= 0" unless $k >= 0;
+
+  # If small values are common (k often 0) then this will reduce the number
+  # of method calls required, which makes us run a little faster.
+  my @q_list;
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
     my $q = $val >> $k;
-    (defined $sub)  ?  $sub->($self, $q)  :  $self->put_gamma($q);
+    push @q_list, $q;
     if ($k > 0) {
+      (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
+      @q_list = ();
       my $r = $val - ($q << $k);
       $self->write($k, $r);
     }
     # adjust k
     $k = _adjust_k($k, $q);
+  }
+  if (scalar @q_list > 0) {
+    (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
   }
   $k;
 }
