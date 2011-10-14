@@ -60,6 +60,7 @@ sub get_gamma {
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
+  my $maxbits = $self->maxbits;
   my @vals;
   while ($count-- > 0) {
     my $base = $self->get_unary();
@@ -67,7 +68,7 @@ sub get_gamma {
     if    ($base == 0) {  push @vals, 0; }
     elsif ($base == 1) {  push @vals, (2 | $self->read(1))-1; }  # optimization
     elsif ($base == 2) {  push @vals, (4 | $self->read(2))-1; }  # optimization
-    elsif ($base == $self->maxbits) { push @vals, ~0; }
+    elsif ($base == $maxbits) { push @vals, ~0; }
     else  {
       push @vals, ((1 << $base) | $self->read($base))-1;
     }
