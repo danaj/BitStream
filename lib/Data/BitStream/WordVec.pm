@@ -56,8 +56,9 @@ sub read {
   my $rvec = $self->_vecref;
   my $val = 0;
 
-  if ($bits == 1) {  # optimize
-    $val = (vec($$rvec, $wpos, 32) >> (31-$bpos)) & 1;
+  if ( $bpos <= (32-$bits) ) {   # optimize single word read
+    $val = (vec($$rvec, $wpos, 32) >> (32-$bpos-$bits))
+           &  (0xFFFFFFFF >> (32-$bits));
   } else {
     my $bits_left = $bits;
     while ($bits_left > 0) {
@@ -100,20 +101,25 @@ sub write {
   my $bpos = $len & 0x1F;     # % 32
   my $rvec = $self->_vecref;
 
-  while ($bits > 0) {
-    my $epos = (($bpos+$bits) > 32)  ?  32  :  $bpos+$bits;
-    my $bits_to_write = $epos - $bpos;  # between 0 and 32
+  my $wlen = 32-$bits;
+  if ( $bpos <= $wlen ) {   # optimize single word write
+    vec($$rvec, $wpos, 32) |=  ($val & (0xFFFFFFFF >> $wlen)) << ($wlen-$bpos);
+  } else {
+    while ($bits > 0) {
+      my $epos = (($bpos+$bits) > 32)  ?  32  :  $bpos+$bits;
+      my $bits_to_write = $epos - $bpos;  # between 0 and 32
 
-    # get rid of parts of val to the right that we aren't writing yet
-    my $val_to_write = $val >> ($bits - $bits_to_write);
-    # get rid of parts of val to the left
-    $val_to_write &= 0xFFFFFFFF >> (32-$bits_to_write);
+      # get rid of parts of val to the right that we aren't writing yet
+      my $val_to_write = $val >> ($bits - $bits_to_write);
+      # get rid of parts of val to the left
+      $val_to_write &= 0xFFFFFFFF >> (32-$bits_to_write);
 
-    vec($$rvec, $wpos, 32)  |=  ($val_to_write << (32-$epos));
+      vec($$rvec, $wpos, 32)  |=  ($val_to_write << (32-$epos));
 
-    $wpos++;
-    $bits -= $bits_to_write;
-    $bpos = 0;
+      $wpos++;
+      $bits -= $bits_to_write;
+      $bpos = 0;
+    }
   }
 
   $self->_setlen( $new_len );
@@ -160,15 +166,20 @@ sub get_unary {
     my $onepos = $pos;
     my $wpos = $pos >> 5;      # / 32
     my $bpos = $pos & 0x1F;    # % 32
-    my $v = 0;
     # Get the current word, shifted left so current position is leftmost.
-    if ($bpos > 0) {
-      $v = (vec($$rvec, $wpos++, 32) & (0xFFFFFFFF >> $bpos)) << $bpos;
+    my $v = ( vec($$rvec, $wpos++, 32) << $bpos ) & 0xFFFFFFFF;
+    # Optimize common small values.
+    if ($v & 0xF0000000) {
+      my $val = ($v & 0x80000000) ? 0 :
+                ($v & 0x40000000) ? 1 :
+                ($v & 0x20000000) ? 2 : 3;
+      push @vals, $val;
+      $pos += $val+1;
+      next;
     }
-    # If this word is 0, advance words until we find one that is non-zero.
-    # Small values are common, so check out the next word.
     if ($v == 0) {
-      $onepos += (32-$bpos) if $bpos > 0;
+      # If this word is 0, advance words until we find one that is non-zero.
+      $onepos += (32-$bpos);
       $v = vec($$rvec, $wpos++, 32);
       if ($v == 0) {
         # We've seen at least 33 zeros.  Start trying to scan quickly.
@@ -203,6 +214,93 @@ sub get_unary {
   $self->_setpos( $pos );
   wantarray ? @vals : $vals[-1];
 }
+
+# This is pretty important for speed
+sub put_gamma {
+  my $self = shift;
+
+  my $len  = $self->len;
+  my $rvec = $self->_vecref;
+
+  foreach my $val (@_) {
+    die "Value must be >= 0" unless $val >= 0;
+
+    my $wpos = $len >> 5;      # / 32
+    my $bpos = $len & 0x1F;    # % 32
+
+    if ($val == 0) {               # Quickly set zero
+      vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
+      $len++;
+      next;
+    } elsif ($val < 511) {         # Quickly put small values if inside a word
+      # determine bit length of gamma($val+1)
+      #  my $bits = 1;  $bits++ while $val >= ((1 << $bits) - 1);  $bits = 2*$bits-1;
+      my $bits = ($val <  1) ?  1 :
+                 ($val <  3) ?  3 :
+                 ($val <  7) ?  5 :
+                 ($val < 15) ?  7 :
+                 ($val < 31) ?  9 :
+                 ($val < 63) ? 11 :
+                 ($val <127) ? 13 :
+                 ($val <255) ? 15 : 17;
+      if ( $bpos <= (32-$bits) ) {
+        vec($$rvec, $wpos, 32) |= ( ($val+1) << ((32-$bpos) - $bits));
+        $len += $bits;
+        next;
+      }
+    } elsif ($val == ~0) {         # Encode ~0 as unary maxbits
+      $len += $self->maxbits;
+      $wpos = $len >> 5;      # / 32
+      $bpos = $len & 0x1F;    # % 32
+      vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
+      $len++;
+      next;
+    }
+
+    my $base = 0;
+    { my $v = $val+1; $base++ while ($v >>= 1); }
+    die unless $base > 0;
+
+    # write base in unary
+    {
+      $len += $base;
+      $wpos = $len >> 5;      # / 32
+      $bpos = $len & 0x1F;    # % 32
+      # Write a 1 in the correct position
+      vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
+      $len++;
+    }
+
+    # write value in binary using $base bits
+    {
+      #$self->write($base, $val+1);
+      my $v = $val+1;
+      my $bits = $base;
+      $wpos = $len >> 5;       # / 32
+      $bpos = $len & 0x1F;     # % 32
+
+      while ($bits > 0) {
+        my $epos = (($bpos+$bits) > 32)  ?  32  :  $bpos+$bits;
+        my $bits_to_write = $epos - $bpos;  # between 0 and 32
+
+        # get rid of parts of val to the right that we aren't writing yet
+        my $val_to_write = $v >> ($bits - $bits_to_write);
+        # get rid of parts of val to the left
+        $val_to_write &= 0xFFFFFFFF >> (32-$bits_to_write);
+
+        vec($$rvec, $wpos, 32)  |=  ($val_to_write << (32-$epos));
+
+        $wpos++;
+        $bits -= $bits_to_write;
+        $bpos = 0;
+      }
+      $len += $base;
+    }
+  }
+  $self->_setlen( $len );
+  1;
+}
+
 
 # Using default read_string
 
