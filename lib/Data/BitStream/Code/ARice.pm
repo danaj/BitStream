@@ -18,10 +18,13 @@ sub _ceillog2_arice {
   $base;
 }
 
+use constant QLOW  => 0;
+use constant QHIGH => 7;
+
 sub _adjust_k {
   my ($k, $q) = @_;
-  return $k-1  if $q == 0  &&  $k > 0;
-  return $k+1  if $q >= 8  &&  $k < 60;
+  return $k-1  if $q <= QLOW  &&  $k > 0;
+  return $k+1  if $q >= QHIGH &&  $k < 60;
   $k;
 }
 
@@ -65,7 +68,7 @@ sub put_arice {
     die "Value must be >= 0" unless $val >= 0;
     if ($k == 0) {
       push @q_list, $val;
-      $k++ if $val >= 8;   # _adjust_k shortcut
+      $k++ if $val >= QHIGH;   # _adjust_k shortcut
     } else {
       my $q = $val >> $k;
       my $r = $val - ($q << $k);
