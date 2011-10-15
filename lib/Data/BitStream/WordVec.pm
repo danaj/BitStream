@@ -26,18 +26,6 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::StartStop';
 
 has '_vec' => (is => 'rw', default => '');
-{
-  use Config;
-  use constant MAXBITS =>
-   (   (defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define')
-    || (defined $Config{'use64bitall'} && $Config{'use64bitall'} eq 'define')
-    || (defined $Config{'longsize'} && $Config{'longsize'} >= 8)
-   )
-   ? 64
-   : 32;
-  no Config;
-}
-
 
 # Access the raw vector.
 sub _vecref {
@@ -55,7 +43,7 @@ sub read {
   my $self = shift;
   die "get while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= MAXBITS;
+  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
@@ -94,7 +82,7 @@ sub write {
   my $self = shift;
   die "put while reading" unless $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= MAXBITS;
+  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $val  = shift;
   die "Undefined value" unless defined $val;
 
@@ -243,24 +231,8 @@ sub put_gamma {
       vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
       $len++;
       next;
-    } elsif ($val < 511) {         # Quickly put small values if inside a word
-      # determine bit length of gamma($val+1)
-      #  my $bits = 1;  $bits++ while $val >= ((1 << $bits) - 1);  $bits = 2*$bits-1;
-      my $bits = ($val <  1) ?  1 :
-                 ($val <  3) ?  3 :
-                 ($val <  7) ?  5 :
-                 ($val < 15) ?  7 :
-                 ($val < 31) ?  9 :
-                 ($val < 63) ? 11 :
-                 ($val <127) ? 13 :
-                 ($val <255) ? 15 : 17;
-      if ( $bpos <= (32-$bits) ) {
-        vec($$rvec, $wpos, 32) |= ( ($val+1) << ((32-$bpos) - $bits));
-        $len += $bits;
-        next;
-      }
     } elsif ($val == ~0) {         # Encode ~0 as unary maxbits
-      $len += MAXBITS;
+      $len += $self->maxbits;
       $wpos = $len >> 5;      # / 32
       $bpos = $len & 0x1F;    # % 32
       vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
@@ -268,23 +240,45 @@ sub put_gamma {
       next;
     }
 
-    my $base = 0;
-    { my $v = $val+1; $base++ while ($v >>= 1); }
-    die unless $base > 0;
-
-    # write base in unary
-    {
-      $len += $base;
-      $wpos = $len >> 5;      # / 32
-      $bpos = $len & 0x1F;    # % 32
-      # Write a 1 in the correct position
-      vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
-      $len++;
+    my $bits;
+    if ($val < 511) {
+      $bits = ($val <  1) ?  1 :
+              ($val <  3) ?  3 :
+              ($val <  7) ?  5 :
+              ($val < 15) ?  7 :
+              ($val < 31) ?  9 :
+              ($val < 63) ? 11 :
+              ($val <127) ? 13 :
+              ($val <255) ? 15 : 17;
+    } else {
+      $bits = 2*9+1;
+      my $v = ($val+1) >> 9;
+      $bits += 2 while ($v >>= 1);
     }
+
+    # Quickly insert if the code fits inside a single word
+    if ( $bpos <= (32-$bits) ) {
+      vec($$rvec, $wpos, 32) |= ( ($val+1) << ((32-$bpos) - $bits));
+      $len += $bits;
+      next;
+    }
+
+    # Effectively we're doing:
+    #
+    #   $self->put_unary($base);
+    #   $self->write($base, $val+1);
+    #
+    # which is equivalent to:
+    #
+    #   $self->write($base, 0);
+    #   $self->write($base+1, $val+1);
+
+    my $base = $bits >> 1;
+    $len += $base;
+    $base += 1;
 
     # write value in binary using $base bits
     {
-      #$self->write($base, $val+1);
       my $v = $val+1;
       my $bits = $base;
       $wpos = $len >> 5;       # / 32
