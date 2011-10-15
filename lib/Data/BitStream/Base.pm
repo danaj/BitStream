@@ -72,9 +72,10 @@ sub DEMOLISH {
   $self->write_close if $self->writing;
 }
 
-{
+my $_host_word_size;
+BEGIN {
   use Config;
-  use constant maxbits =>
+  $_host_word_size =
    (   (defined $Config{'use64bitint'} && $Config{'use64bitint'} eq 'define')
     || (defined $Config{'use64bitall'} && $Config{'use64bitall'} eq 'define')
     || (defined $Config{'longsize'} && $Config{'longsize'} >= 8)
@@ -83,6 +84,7 @@ sub DEMOLISH {
    : 32;
   no Config;
 }
+use constant maxbits => $_host_word_size;
 
 sub rewind {
   my $self = shift;
