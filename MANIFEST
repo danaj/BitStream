@@ -6,6 +6,8 @@ TODO
 lib/Data/BitStream.pm
 lib/Data/BitStream/Base.pm
 lib/Data/BitStream/BitVec.pm
+lib/Data/BitStream/BLVec.pm
+lib/Data/BitStream/MinimalVec.pm
 lib/Data/BitStream/String.pm
 lib/Data/BitStream/Vec.pm
 lib/Data/BitStream/WordVec.pm

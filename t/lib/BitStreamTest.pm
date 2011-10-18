@@ -38,6 +38,9 @@ if (eval {require Data::BitStream::BitVec}) {
 if (eval {require Data::BitStream::WordVec}) {
   $stream_constructors{'wordvec'} = sub {return Data::BitStream::WordVec->new();};
 }
+if (eval {require Data::BitStream::BLVec}) {
+  $stream_constructors{'blvec'} = sub {return Data::BitStream::BLVec->new();};
+}
 
 sub impl_list {
   my $sorder = 'default string wordvec vector bitvector';
