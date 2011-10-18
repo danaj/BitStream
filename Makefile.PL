@@ -12,8 +12,10 @@ WriteMakefile(
        (AUTHOR         => 'Dana A Jacobsen <dana@acm.org>') : ()),
 
     PREREQ_PM => {
-                     # Tested with 0.92 and 0.98
-                     'Test::More'       => '0.82',
+                     # I'm using subtest.  Could go back to 0.82 without it.
+                     'Test::More'       => '0.94',
+                     # Using just the import method of Exporter
+                     'Exporter'         => '5.57',
                      # I normally use 0.93, but tested with RHEL6's 0.58
                      'Mouse'            => '0.58',
                      'Mouse::Role'      => '0.58',

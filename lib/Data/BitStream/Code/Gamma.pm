@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Gamma::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::Gamma::VERSION   = '0.01';
 }
-BEGIN {
-  $Data::BitStream::Code::Gamma::VERSION = '0.01';
-}
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'Gamma',
+                  universal => 1,
+                  params    => 0,
+                  encodesub => sub {shift->put_gamma(@_)},
+                  decodesub => sub {shift->get_gamma(@_)}, };
 
 use Mouse::Role;
 requires qw(maxbits read write put_unary get_unary);

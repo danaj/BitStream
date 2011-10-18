@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::EvenRodeh::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::EvenRodeh::VERSION   = '0.01';
 }
-BEGIN {
-  $Data::BitStream::Code::EvenRodeh::VERSION = '0.01';
-}
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'EvenRodeh',
+                  universal => 1,
+                  params    => 0,
+                  encodesub => sub {shift->put_evenrodeh(@_)},
+                  decodesub => sub {shift->get_evenrodeh(@_)}, };
 
 sub _floorlog2_er {
   my $d = shift;

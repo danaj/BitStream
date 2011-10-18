@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 #use FindBin;  use lib "$FindBin::Bin/../lib";
-use Data::BitStream;
+use Data::BitStream qw(code_is_supported code_is_universal);
 use Test::More;
 
 my @codes = qw|
@@ -47,8 +47,8 @@ my @codes = qw|
 plan tests => 3 * scalar @codes;
 
 foreach my $code (@codes) {
-  my $issupported = Data::BitStream::code_is_supported($code);
-  my $isuniversal = Data::BitStream::code_is_universal($code);
+  my $issupported = code_is_supported($code);
+  my $isuniversal = code_is_universal($code);
   ok($issupported, "$code is supported");
   ok($isuniversal || !$isuniversal, "$code is or is not universal");
 }

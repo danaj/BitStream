@@ -3,10 +3,31 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Base::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Base::VERSION   = '0.02';
 }
-BEGIN {
-  $Data::BitStream::Base::VERSION = '0.01';
-}
+
+our $CODEINFO = [ { package   => __PACKAGE__,
+                    name      => 'Unary',
+                    universal => 0,
+                    params    => 0,
+                    encodesub => sub {shift->put_unary(@_)},
+                    decodesub => sub {shift->get_unary(@_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'Unary1',
+                    universal => 0,
+                    params    => 0,
+                    encodesub => sub {shift->put_unary1(@_)},
+                    decodesub => sub {shift->get_unary1(@_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'BinWord',
+                    universal => 0,
+                    params    => 1,
+                    encodesub => sub {shift->put_binword(@_)},
+                    decodesub => sub {shift->get_binword(@_)},
+                  },
+                ];
 
 use Mouse::Role;
 

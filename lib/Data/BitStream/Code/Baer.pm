@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Baer::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::Baer::VERSION   = '0.01';
 }
-BEGIN {
-  $Data::BitStream::Code::Baer::VERSION = '0.01';
-}
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'Baer',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_baer(@_)},
+                  decodesub => sub {shift->get_baer(@_)}, };
 
 use Mouse::Role;
 requires 'read', 'write', 'put_unary', 'get_unary';

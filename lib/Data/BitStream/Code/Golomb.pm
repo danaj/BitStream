@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Golomb::AUTHORITY = 'cpan:DANAJ';
-}
-BEGIN {
   $Data::BitStream::Code::Golomb::VERSION = '0.02';
 }
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'Golomb',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_golomb(@_)},
+                  decodesub => sub {shift->get_golomb(@_)}, };
 
 use Mouse::Role;
 requires qw(read write put_unary get_unary);

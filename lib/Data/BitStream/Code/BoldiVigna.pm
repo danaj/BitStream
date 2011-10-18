@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::BoldiVigna::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::BoldiVigna::VERSION   = '0.01';
 }
-BEGIN {
-  $Data::BitStream::Code::BoldiVigna::VERSION = '0.01';
-}
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'BoldiVigna',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_boldivigna(@_)},
+                  decodesub => sub {shift->get_boldivigna(@_)}, };
 
 use Mouse::Role;
 requires qw(read write put_unary get_unary maxbits get_gamma put_gamma);

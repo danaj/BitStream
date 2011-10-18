@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::ARice::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::ARice::VERSION   = '0.01';
 }
-BEGIN {
-  $Data::BitStream::Code::ARice::VERSION = '0.01';
-}
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'ARice',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_arice(@_)},
+                  decodesub => sub {shift->get_arice(@_)}, };
 
 use Mouse::Role;
 requires qw(read write write_close put_unary get_unary);

@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Escape::AUTHORITY = 'cpan:DANAJ';
-}
-BEGIN {
   $Data::BitStream::Code::Escape::VERSION = '0.01';
 }
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'Escape',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_escape([split('-',shift)], @_)},
+                  decodesub => sub {shift->get_escape([split('-',shift)], @_)}, };
 
 use Mouse::Role;
 requires qw(read write maxbits);

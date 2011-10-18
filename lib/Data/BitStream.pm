@@ -6,57 +6,89 @@ use warnings;
 
 our $VERSION = '0.03';
 
-require Exporter;
-
-our @ISA = qw(Exporter);
-
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
-
-# This allows declaration	use Data::BitStream ':all';
-# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-# will save memory.
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
-
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-our @EXPORT = qw( );
+# Since we're using Moose/Mouse, things get rather messed up if we try to
+# inherit from Exporter.  Really all we want is the ability to let people
+# use a couple convenience functions, so just grab the import method.
+use Exporter qw(import);
+our @EXPORT_OK = qw( code_is_supported code_is_universal );
 
 
-# Class methods to support referencing codes by text names
-
+# Our class methods to support referencing codes by text names.
 my %codeinfo;
 
 sub add_code {
   my $rinfo = shift;
+  die "add_code needs a hash ref" unless defined $rinfo && ref $rinfo eq 'HASH';
   foreach my $p (qw(package name universal params encodesub decodesub)) {
     die "invalid registration: missing $p" unless defined $$rinfo{$p};
   }
   my $name = lc $$rinfo{'name'};
   if (defined $codeinfo{$name}) {
-    #return 1 if $codeinfo{$name}{'package'} eq $$rinfo{'package'};
+    return 1 if $codeinfo{$name}{'package'} eq $$rinfo{'package'};
     die "module $$rinfo{'package'} trying to reuse code name '$name' already in use by $codeinfo{$name}{'package'}";
   }
   $codeinfo{$name} = $rinfo;
+  1;
+}
+
+sub find_code {
+  my $code = lc shift;
+
+  return $codeinfo{$code} if defined $codeinfo{$code};
+
+  # Load codes from base
+  if (   defined $Data::BitStream::Base::CODEINFO
+      && ref $Data::BitStream::Base::CODEINFO eq 'ARRAY') {
+    foreach my $r (@{$Data::BitStream::Base::CODEINFO}) {
+      next unless ref $r eq 'HASH';
+      add_code($r);
+    }
+  }
+
+  # Load info for all code modules that have been included
+  foreach my $module (keys %Data::BitStream::Code::) {
+    # module is 'Gamma::'  mname is 'Gamma'
+    my ($mname) = $module =~ /(.+)::$/;
+    next unless defined $mname;
+    # Load the CODEINFO variable, skip if it isn't found
+    my $rinfo;
+    {
+      my $pname = 'Data::BitStream::Code::' . $module;
+      no strict 'refs';
+      $rinfo = ${$pname}{'CODEINFO'};
+      next unless defined $rinfo;
+      next unless $rinfo =~ s/^\*//;
+      $rinfo = ${$rinfo};
+    }
+    next unless defined $rinfo;
+    if (ref $rinfo eq 'HASH') {
+      add_code($rinfo);
+    } elsif (ref $rinfo eq 'ARRAY') {
+      foreach my $r (@{$rinfo}) {
+        next unless ref $r eq 'HASH';
+        add_code($r);
+      }
+    }
+  }
+
+  $codeinfo{$code};
 }
 
 sub code_is_supported {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  return (defined $codeinfo{$code});
+  return defined find_code($code);
 }
 
 sub code_is_universal {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  if (!defined $codeinfo{$code}) {
+  my $inforef = find_code($code);
+  if (!defined $inforef) {
     warn "code_is_universal: unknown code '$code'\n";
     return 0;
   }
-  return $codeinfo{$code}{'universal'};
+  return $inforef->{'universal'};
 }
 
 
@@ -81,7 +113,7 @@ sub code_put {
   my $self = shift;
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  my $inforef = $codeinfo{$code};
+  my $inforef = find_code($code);
   die "Unknown code $code" unless defined $inforef;
   my $sub = $inforef->{'encodesub'};
   die "No encoding sub for code $code!" unless defined $sub;
@@ -98,7 +130,7 @@ sub code_get {
   my $self = shift;
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  my $inforef = $codeinfo{$code};
+  my $inforef = find_code($code);
   die "Unknown code $code" unless defined $inforef;
   my $sub = $inforef->{'decodesub'};
   die "No decoding sub for code $code!" unless defined $sub;
@@ -111,134 +143,7 @@ sub code_get {
   }
 }
 
-# Add basic codes.  Another way to handle this is to have the roles do:
-#   eval { Data::BitStream::add_code( ... ) };
-# where the eval lets them work when they're a role in another setting.  Yet
-# another way would be for the data to live in their package variable, and
-# we magically find them.
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Unary',
-          'universal' => 0,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_unary(@_)},
-          'decodesub' => sub {shift->get_unary(@_)}, });
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Unary1',
-          'universal' => 0,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_unary1(@_)},
-          'decodesub' => sub {shift->get_unary1(@_)}, });
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'BinWord',
-          'universal' => 0,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_binword(@_)},
-          'decodesub' => sub {shift->get_binword(@_)}, });
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Gamma',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_gamma(@_)},
-          'decodesub' => sub {shift->get_gamma(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'package'   => __PACKAGE__,
-          'name'      => 'Delta',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_delta(@_)},
-          'decodesub' => sub {shift->get_delta(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Omega',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_omega(@_)},
-          'decodesub' => sub {shift->get_omega(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'EvenRodeh',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_evenrodeh(@_)},
-          'decodesub' => sub {shift->get_evenrodeh(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Levenstein',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_levenstein(@_)},
-          'decodesub' => sub {shift->get_levenstein(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Fibonacci',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_fib(@_)},
-          'decodesub' => sub {shift->get_fib(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'FibC2',
-          'universal' => 1,
-          'params'    => 0,
-          'encodesub' => sub {shift->put_fib_c2(@_)},
-          'decodesub' => sub {shift->get_fib_c2(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Golomb',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_golomb(@_)},
-          'decodesub' => sub {shift->get_golomb(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Rice',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_rice(@_)},
-          'decodesub' => sub {shift->get_rice(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'GammaGolomb',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_golomb(sub {shift->put_gamma(@_)},@_)},
-          'decodesub' => sub {shift->get_golomb(sub {shift->get_gamma(@_)},@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'ExpGolomb',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_rice(sub {shift->put_gamma(@_)},@_)},
-          'decodesub' =>sub {shift->get_rice(sub {shift->get_gamma(@_)},@_)},});
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'StartStop',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_startstop([split('-',shift)], @_)},
-          'decodesub' => sub {shift->get_startstop([split('-',shift)], @_)}, });
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'StartStepStop', 
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_startstepstop([split('-',shift)], @_)},
-          'decodesub' => sub {shift->get_startstepstop([split('-',shift)], @_)}, });
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Baer',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_baer(@_)},
-          'decodesub' => sub {shift->get_baer(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'BoldiVigna',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_boldivigna(@_)},
-          'decodesub' => sub {shift->get_boldivigna(@_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'Escape',
-          'universal' => 0,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_escape([split('-',shift)], @_)},
-          'decodesub' => sub {shift->get_escape([split('-',shift)], @_)}, } );
-add_code({'package'   => __PACKAGE__,
-          'name'      => 'ARice',
-          'universal' => 1,
-          'params'    => 1,
-          'encodesub' => sub {shift->put_arice(@_)},
-          'decodesub' => sub {shift->get_arice(@_)} } );
-
-
+__PACKAGE__->meta->make_immutable;
 no Mouse;
 
 1;

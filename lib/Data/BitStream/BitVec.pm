@@ -152,19 +152,9 @@ sub get_unary {
   while ($count-- > 0) {
     last if $pos >= $len;
 
-    #my $onepos = $pos;
-    #$onepos += 32 while (    (($onepos+31) < $len)
-    #                      && ($self->_vec->Chunk_Read(32, $onepos) == 0) );
-    #$onepos +=  8 while (    (($onepos+7) < $len)
-    #                      && ($self->_vec->Chunk_Read(8, $onepos) == 0) );
-    #while ($onepos < $len) {
-    #  last if $self->_vec->bit_test($onepos);
-    #  $onepos++;
-    #}
-    #die "get_unary read off end of vector" if $onepos >= $len;
-
-    # Interval_Scan is very, very fast.  In theory it could go wandering off
-    # down the vector if we have a huge sequence of 1's after this unary value.
+    # Interval_Scan is very, very fast.  It could spend some time finding the
+    # max position that we don't care about, but that is rare, and it is more
+    # than an order of magnitude faster than doing this via pure Perl.
     my ($onepos, undef) = $vref->Interval_Scan_inc($pos);
     die "get_unary read off end of vector" unless defined $onepos;
 

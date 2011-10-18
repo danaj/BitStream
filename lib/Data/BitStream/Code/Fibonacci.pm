@@ -3,10 +3,24 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Fibonacci::AUTHORITY = 'cpan:DANAJ';
+  $Data::BitStream::Code::Fibonacci::VERSION   = '0.03';
 }
-BEGIN {
-  $Data::BitStream::Code::Fibonacci::VERSION = '0.03';
-}
+
+our $CODEINFO = [ { package   => __PACKAGE__,
+                    name      => 'Fibonacci',
+                    universal => 1,
+                    params    => 0,
+                    encodesub => sub {shift->put_fib(@_)},
+                    decodesub => sub {shift->get_fib(@_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'FibC2',
+                    universal => 1,
+                    params    => 0,
+                    encodesub => sub {shift->put_fib_c2(@_)},
+                    decodesub => sub {shift->get_fib_c2(@_)},
+                  },
+                ];
 
 use Mouse::Role;
 requires qw(write put_string get_unary read);

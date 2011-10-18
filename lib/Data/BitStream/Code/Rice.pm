@@ -3,10 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Rice::AUTHORITY = 'cpan:DANAJ';
-}
-BEGIN {
   $Data::BitStream::Code::Rice::VERSION = '0.02';
 }
+
+our $CODEINFO = { package   => __PACKAGE__,
+                  name      => 'Rice',
+                  universal => 1,
+                  params    => 1,
+                  encodesub => sub {shift->put_rice(@_)},
+                  decodesub => sub {shift->get_rice(@_)}, };
 
 use Mouse::Role;
 requires qw(read write put_unary get_unary);
