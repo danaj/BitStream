@@ -29,6 +29,10 @@ has '_vec' => (is => 'rw',
                isa => 'Data::BitStream::BitList',
                default => sub { return Data::BitStream::BitList->new(0) });
 
+# Force our pos and len sets to also set the BitList
+has '+pos' => (trigger => sub { shift->_vec->setpos(shift) });
+has '+len' => (trigger => sub { shift->_vec->setlen(shift) });
+
 after 'erase' => sub {
   my $self = shift;
   $self->_vec->resize(0);
@@ -47,20 +51,12 @@ sub read {
   die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
-  my $pos = $self->pos;
-  my $len = $self->len;
-  return if $pos >= $len;
-
   my $vref = $self->_vec;
-  die "read len mismatch" unless $len == $vref->getlen();
-  $vref->setpos($pos);
+
+  return $vref->vreadahead($bits)  if $peek;
+
   my $val = $vref->vread($bits);
-  if ($peek) {
-    $vref->setpos($pos);
-  } else {
-    $self->_setpos( $pos + $bits );
-  }
-  die "pos mismatch with bits $bits val $val $pos/$len" unless $self->pos == $vref->getpos();
+  $self->_setpos( $vref->getpos );
   $val;
 }
 sub write {
@@ -71,104 +67,94 @@ sub write {
   my $val  = shift;
   die "Undefined value" unless defined $val;
 
-  my $len  = $self->len;
   my $vref = $self->_vec;
-  $vref->setlen($len);
 
   $vref->vwrite($bits, $val);
 
-  $self->_setlen($len + $bits);
-  die "len mismatch" unless $self->len == $vref->getlen();
-  1;
-}
-
-sub put_unary {
-  my $self = shift;
-  die "put while not writing" unless $self->writing;
-
-  my $len  = $self->len;
-  my $vref = $self->_vec;
-
-  die "put_unary len mismatch 1" unless $self->len == $vref->getlen();
-  foreach my $val (@_) {
-    #$self->write($val+1, 1);
-    $vref->put_unary($val);
-  }
   $self->_setlen( $vref->getlen );
-  die "put_unary len mismatch 2" unless $self->len == $vref->getlen();
   1;
 }
 
-sub get_unary {
-  my $self = shift;
+# This is a bit ugly, but my other alternatives:
+#
+#   1) hand-write each sub.
+#      Error prone, and lots of duplication.
+#
+#   2) make a _generic_put and then:
+#      sub put_unary { _generic_put( sub { shift->put_unary(shift) }, @_) }
+#      Very nice, but adds time for every value
+#
+#   3) _generic_put with a for loop inside the sub argument.
+#      Solves performance, but now unwieldy and not generic.
+#
+#   3) Use *{$fn} = sub { ... }; instead of eval.
+#      100ns slower!
+#
+
+sub _generate_generic_put {
+  my $fn   = shift;
+  my $blfn = shift || $fn;
+
+  no strict 'refs';
+  undef *{$fn};
+  eval "sub $fn {" .
+'  my $self = shift;
+   die "put while not writing" unless $self->writing;
+   my $vref = $self->_vec;
+   foreach my $val (@_) {
+     $vref->' . $blfn . '($val);
+   }
+   $self->_setlen( $vref->getlen );
+   1;
+ }';
+}
+
+sub _generate_generic_get {
+  my $fn   = shift;
+  my $blfn = shift || $fn;
+
+  no strict 'refs';
+  undef *{$fn};
+  eval "sub $fn {" .
+'  my $self = shift;
   die "get while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my $pos = $self->pos;
-  my $len = $self->len;
   my $vref = $self->_vec;
-  $vref->setpos($pos);
 
   my @vals;
   while ($count-- > 0) {
-    last if $pos >= $len;
-    my $v = $vref->get_unary;
+    my $v = $vref->' . $blfn . ';
+    last unless defined $v;
     push @vals, $v;
-    $pos += $v+1;
   }
-  $self->_setpos( $pos );
-  die "get_unary pos mismatch" unless $self->pos == $vref->getpos;
+  $self->_setpos( $vref->getpos );
   wantarray ? @vals : $vals[-1];
+}';
 }
 
-sub put_gamma {
-  my $self = shift;
-  die "put while not writing" unless $self->writing;
-
-  my $len  = $self->len;
-  my $vref = $self->_vec;
-
-  foreach my $val (@_) {
-    $vref->put_gamma($val);
-  }
-  $self->_setlen( $vref->getlen );
-  die "put_gamma len mismatch" unless $self->len == $vref->getlen();
-  1;
+sub _generate_generic_getput {
+  my $code = shift;
+  _generate_generic_put( 'put_' . $code );
+  _generate_generic_get( 'get_' . $code );
 }
 
-sub get_gamma {
-  my $self = shift;
-  die "get while writing" if $self->writing;
-  my $count = shift;
-  if    (!defined $count) { $count = 1;  }
-  elsif ($count  < 0)     { $count = ~0; }   # Get everything
-  elsif ($count == 0)     { return;      }
 
-  my $pos = $self->pos;
-  my $len = $self->len;
-  my $vref = $self->_vec;
-  $vref->setpos($pos);
+_generate_generic_getput('unary');
+_generate_generic_getput('unary1');
+_generate_generic_getput('gamma');
+_generate_generic_getput('delta');
+_generate_generic_getput('omega');
+_generate_generic_getput('fib');
 
-  my @vals;
-  while ($count-- > 0) {
-    last if $pos >= $len;
-    my $v = $vref->get_gamma;
-    push @vals, $v;
-    $pos = $vref->getpos;
-  }
-  $self->_setpos( $pos );
-  die "get_unary pos mismatch" unless $self->pos == $vref->getpos;
-  wantarray ? @vals : $vals[-1];
-}
 
 sub put_string {
   my $self = shift;
   die "put while reading" unless $self->writing;
 
-  my $len = $self->len;
   my $vref = $self->_vec;
 
   foreach my $str (@_) {
@@ -177,7 +163,7 @@ sub put_string {
     $vref->put_string($str);
   }
   $self->_setlen( $vref->getlen );
-  die "put_string len mismatch" unless $self->len == $vref->getlen();
+  #die "put_string len mismatch" unless $self->len == $vref->getlen();
   1;
 }
 
