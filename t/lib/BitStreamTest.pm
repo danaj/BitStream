@@ -9,6 +9,7 @@ use warnings;
 
 use base qw(Exporter);
 our @EXPORT = qw(
+  full_testing
   new_stream
   encoding_list
   is_universal
@@ -20,6 +21,10 @@ our @EXPORT = qw(
   sub_for_string
 );
 
+# Skip some tests unless this is 1
+sub full_testing   { 0; }
+
+
 # The string implementation must be available and working.
 use Data::BitStream::String;
 
@@ -29,10 +34,10 @@ my %stream_constructors = (
 
 # Other implementations may or may not be available.
 # If they're not, we just won't test them.
-if (eval {require Data::BitStream::Vec}) {
+if (full_testing && eval {require Data::BitStream::Vec}) {
   $stream_constructors{'vector'} = sub { return Data::BitStream::Vec->new(); };
 }
-if (eval {require Data::BitStream::BitVec}) {
+if (full_testing && eval {require Data::BitStream::BitVec}) {
   $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
 }
 if (eval {require Data::BitStream::WordVec}) {
@@ -43,7 +48,7 @@ if (eval {require Data::BitStream::BLVec}) {
 }
 
 sub impl_list {
-  my $sorder = 'default string wordvec vector bitvector';
+  my $sorder = 'default string wordvec blvec vector bitvector';
   my @ilist = sort {
                      index($sorder,$a) <=> index($sorder,$b);
                    } keys %stream_constructors;
