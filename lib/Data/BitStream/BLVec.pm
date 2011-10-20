@@ -92,32 +92,45 @@ sub write {
 #
 
 sub _generate_generic_put {
+  my $param = shift;
   my $fn   = shift;
   my $blfn = shift || $fn;
 
-  no strict 'refs';
-  undef *{$fn};
-  eval "sub $fn {" .
+  my $st = "sub $fn {\n " .
 '  my $self = shift;
    die "put while not writing" unless $self->writing;
+   __GETPARAM__
    my $vref = $self->_vec;
    foreach my $val (@_) {
-     $vref->' . $blfn . '($val);
+     $vref->__CALLFUNC__;
    }
    $self->_setlen( $vref->getlen );
    1;
  }';
-}
 
-sub _generate_generic_get {
-  my $fn   = shift;
-  my $blfn = shift || $fn;
+  if ($param ne '') {
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   die "invalid parameters" unless $param;/;
+    $st =~ s/__CALLFUNC__/$blfn(\$p, \$val)/;
+  } else {
+    $st =~ s/__GETPARAM__//;
+    $st =~ s/__CALLFUNC__/$blfn(\$val)/;
+  }
 
   no strict 'refs';
   undef *{$fn};
-  eval "sub $fn {" .
+  eval $st;
+  warn $@ if $@;
+}
+
+sub _generate_generic_get {
+  my $param = shift;
+  my $fn   = shift;
+  my $blfn = shift || $fn;
+
+  my $st = "sub $fn {\n " .
 '  my $self = shift;
   die "get while writing" if $self->writing;
+  __GETPARAM__
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -127,29 +140,87 @@ sub _generate_generic_get {
 
   my @vals;
   while ($count-- > 0) {
-    my $v = $vref->' . $blfn . ';
+    my $v = $vref->__CALLFUNC__;
     last unless defined $v;
     push @vals, $v;
   }
   $self->_setpos( $vref->getpos );
   wantarray ? @vals : $vals[-1];
 }';
+  if ($param ne '') {
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   die "invalid parameters" unless $param;/;
+    $st =~ s/__CALLFUNC__/$blfn(\$p)/;
+  } else {
+    $st =~ s/__GETPARAM__//;
+    $st =~ s/__CALLFUNC__/$blfn/;
+  }
+
+  no strict 'refs';
+  undef *{$fn};
+  eval $st;
+  warn $@ if $@;
 }
 
 sub _generate_generic_getput {
+  my $param = shift;
   my $code = shift;
-  _generate_generic_put( 'put_' . $code );
-  _generate_generic_get( 'get_' . $code );
+  _generate_generic_put($param, 'put_' . $code );
+  _generate_generic_get($param, 'get_' . $code );
 }
 
 
-_generate_generic_getput('unary');
-_generate_generic_getput('unary1');
-_generate_generic_getput('gamma');
-_generate_generic_getput('delta');
-_generate_generic_getput('omega');
-_generate_generic_getput('fib');
+_generate_generic_getput('', 'unary');
+_generate_generic_getput('', 'unary1');
+_generate_generic_getput('', 'gamma');
+_generate_generic_getput('', 'delta');
+_generate_generic_getput('', 'omega');
+_generate_generic_getput('', 'fib');
+_generate_generic_getput('', 'levenstein');
+_generate_generic_put('$p > 0 && $p <= $self->maxbits', 'put_binword', 'vwrite');
+_generate_generic_get('$p > 0 && $p <= $self->maxbits', 'get_binword', 'vread');
+#_generate_generic_get('', 'get_levenstein');
 
+sub put_arice {
+  my $self = shift;
+  my $k = shift;
+  if (ref $k eq 'CODE') {   # Check for sub as first parameter
+    return Data::BitStream::Code::ARice::put_arice($self, $k, @_);
+  }
+  die "k must be >= 0" unless $k >= 0;
+
+  my $vref = $self->_vec;
+  foreach my $val (@_) {
+    $vref->put_adaptive_gamma_rice($k, $val);
+  }
+  $self->_setlen( $vref->getlen );
+  $k;
+}
+
+sub get_arice {
+  my $self = shift;
+  die "get while writing" if $self->writing;
+  my $k = shift;
+  if (ref $k eq 'CODE') {   # Check for sub as first parameter
+    return Data::BitStream::Code::ARice::get_arice($self, $k, @_);
+  }
+  die "k must be >= 0" unless $k >= 0;
+
+  my $count = shift;
+  if    (!defined $count) { $count = 1;  }
+  elsif ($count  < 0)     { $count = ~0; }   # Get everything
+  elsif ($count == 0)     { return;      }
+
+  my $vref = $self->_vec;
+
+  my @vals;
+  while ($count-- > 0) {
+    my $v = $vref->get_adaptive_gamma_rice($k);
+    last unless defined $v;
+    push @vals, $v;
+  }
+  $self->_setpos( $vref->getpos );
+  wantarray ? @vals : $vals[-1];
+}
 
 sub put_string {
   my $self = shift;
@@ -165,6 +236,28 @@ sub put_string {
   $self->_setlen( $vref->getlen );
   #die "put_string len mismatch" unless $self->len == $vref->getlen();
   1;
+}
+
+sub read_string {
+  my $self = shift;
+  my $bits = shift;
+  die "Invalid bits" unless defined $bits && $bits >= 0;
+  die "Short read" unless $bits <= ($self->len - $self->pos);
+  my $vref = $self->_vec;
+  $vref->read_string($bits);
+}
+
+sub to_raw_testing {
+  my $self = shift;
+  $self->write_close;
+  my $vref = $self->_vec;
+  my $str = $vref->to_raw;
+  print "length: ", length($str), "\n";
+
+  my $str2 = Data::BitStream::Base::to_raw($self);
+  print "length: ", length($str2), "\n";
+  die unless $str eq $str2;
+  return $str2;
 }
 
 
