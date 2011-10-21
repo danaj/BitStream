@@ -36,8 +36,9 @@ use Imager;
 # and it is quite a bit simpler than systems like JPEG-LS, CALIC, JPEG2000,
 # HDPhoto, etc.  It will typically beat gzip, bzip2, lzma however, and on many
 # inputs it will compress better than JPEG-LS (mostly because of the color
-# transform).  The speed can be improved with some work, mostly in the
-# Data::BitStream library.
+# transform).  Sometimes it beats PNG, other times not.
+# The speed can be improved with some work, mostly in the Data::BitStream
+# library.
 #
 # BUGS / TODO:
 #       - encoding method is simplistic
@@ -256,23 +257,23 @@ sub decorrelate_RCT {
   my $rcolors = shift;
   die unless scalar @{$rcolors->[0]} == 3;
 
-  @{$rcolors} = map { my ($r, $g, $b) = @{$_};
-                      my $Y  = POSIX::floor( ($r + 2*$g + $b) / 4 );
-                      my $Cb = $r - $g;
-                      my $Cr = $b - $g;
-                      [ ($Y,$Cb,$Cr) ];
-                    } @{$rcolors};
+  map { my ($r, $g, $b) = @{$_};
+        my $Y  = POSIX::floor( ($r + 2*$g + $b) / 4 );
+        my $Cb = $r - $g;
+        my $Cr = $b - $g;
+        [ ($Y,$Cb,$Cr) ];
+      } @{$rcolors};
 }
 sub correlate_RCT {
   my $rcolors = shift;
   die unless scalar @{$rcolors->[0]} == 3;
 
-  @{$rcolors} = map { my ($Y, $Cb, $Cr) = @{$_};
-                      my $g = $Y - POSIX::floor( ($Cb+$Cr)/4 );
-                      my $r = $Cb + $g;
-                      my $b = $Cr + $g;
-                      [ ($r,$g,$b) ];
-                    } @{$rcolors};
+  map { my ($Y, $Cb, $Cr) = @{$_};
+        my $g = $Y - POSIX::floor( ($Cb+$Cr)/4 );
+        my $r = $Cb + $g;
+        my $b = $Cr + $g;
+        [ ($r,$g,$b) ];
+      } @{$rcolors};
 }
 
 # YCoCg: Malvar's lossless version from his 2008 SPIE lifting paper
@@ -280,25 +281,25 @@ sub decorrelate_YCoCg {
   my $rcolors = shift;
   die unless scalar @{$rcolors->[0]} == 3;
 
-  @{$rcolors} = map { my ($r, $g, $b) = @{$_};
-                      my $Co = $r - $b;
-                      my $t  = $b + int( (($Co < 0) ? $Co-1 : $Co) / 2 );
-                      my $Cg = $g - $t;
-                      my $Y  = $t + int( (($Cg < 0) ? $Cg-1 : $Cg) / 2 );
-                      [ ($Y,$Co,$Cg) ];
-                    } @{$rcolors};
+  map { my ($r, $g, $b) = @{$_};
+        my $Co = $r - $b;
+        my $t  = $b + int( (($Co < 0) ? $Co-1 : $Co) / 2 );
+        my $Cg = $g - $t;
+        my $Y  = $t + int( (($Cg < 0) ? $Cg-1 : $Cg) / 2 );
+        [ ($Y,$Co,$Cg) ];
+      } @{$rcolors};
 }
 sub correlate_YCoCg {
   my $rcolors = shift;
   die unless scalar @{$rcolors->[0]} == 3;
 
-  @{$rcolors} = map { my ($Y, $Co, $Cg) = @{$_};
-                      my $t = $Y - int( (($Cg < 0) ? $Cg-1 : $Cg) / 2 );
-                      my $g = $Cg + $t;
-                      my $b = $t - int( (($Co < 0) ? $Co-1 : $Co) / 2 );
-                      my $r = $b + $Co;
-                      [ ($r,$g,$b) ];
-                    } @{$rcolors};
+  map { my ($Y, $Co, $Cg) = @{$_};
+        my $t = $Y - int( (($Cg < 0) ? $Cg-1 : $Cg) / 2 );
+        my $g = $Cg + $t;
+        my $b = $t - int( (($Co < 0) ? $Co-1 : $Co) / 2 );
+        my $r = $b + $Co;
+        [ ($r,$g,$b) ];
+      } @{$rcolors};
 }
 
 ###############################################################################
@@ -545,7 +546,7 @@ sub compress_file {
     }
 
     # Decorrelate the color planes for better compression
-    $decor_sub->($colors[$y]) if defined $decor_sub;
+    @{$colors[$y]} = $decor_sub->($colors[$y]) if defined $decor_sub;
 
     foreach my $p (0 .. $planes-1) {
       if ($opts{'norun'}) {
@@ -619,26 +620,18 @@ sub decompress_file {
       }
     }
 
-    # set the scanline.  Imager's setsamples() only works for 16-bit, so use
-    # the less efficient setscanline interface.
+    # Set the scanline.
     {
-      my @icolors;
+      # Transform back into RGB from YUV/YCbCr/YCoCg/etc. if necessary
+      my @ycolors = (defined $cor_sub) ? $cor_sub->($colors[$y])
+                                       : @{$colors[$y]};
       if ($planes == 1) {
-        @icolors = map { Imager::Color->new(gray => $_->[0]); } @{$colors[$y]};
+        $image->setscanline( y => $y,  type => '8bit', pixels =>
+           pack("C*", map { $_->[0], $_->[0], $_->[0], 0 } @ycolors) );
       } else {
-        # operate on a copy of colors so we ensure it's not changed.
-        my $ycolors_copy = dclone($colors[$y]);
-
-        # Reverse decorrolation
-        $cor_sub->($ycolors_copy) if defined $cor_sub;
-
-        foreach my $x (0 .. $width-1) {
-          my($r,$g,$b) = @{$ycolors_copy->[$x]};
-          #print "[$y,$x] $r $g $b\n";
-          push @icolors, Imager::Color->new(r=>$r, g=>$g, b=>$b);
-        }
+        $image->setscanline( y => $y,  type => '8bit', pixels =>
+           pack("C*", map { $_->[0], $_->[1], $_->[2], 0 } @ycolors) );
       }
-      $image->setscanline( y => $y,  type => '8bit',  pixels => \@icolors );
     }
   }
 
