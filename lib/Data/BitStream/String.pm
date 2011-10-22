@@ -11,7 +11,7 @@ BEGIN {
 use Mouse;
 
 with 'Data::BitStream::Base',
-     #'Data::BitStream::Code::Gamma',  # implemented here
+     'Data::BitStream::Code::Gamma',  # implemented here
      'Data::BitStream::Code::Delta',
      'Data::BitStream::Code::Omega',
      'Data::BitStream::Code::Levenstein',

@@ -279,10 +279,14 @@ sub put_unary1 {
 
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
-    my $nwords = $val >> 5;
-    my $nbits = $val & 0x1F;
-    $self->write(32, 0xFFFFFFFF)  for (1 .. $nwords);
-    $self->write($nbits+1, 0xFFFFFFFE);
+    if ($val < 32) {
+      $self->write($val+1, ~0 << 1);
+    } else {
+      my $nbits  = $val % maxbits;
+      my $nwords = ($val-$nbits) / maxbits;
+      $self->write(maxbits, ~0)  for (1 .. $nwords);
+      $self->write($nbits+1, ~0 << 1);
+    }
   }
   1;
 }
@@ -310,18 +314,18 @@ sub get_unary1 {            # You ought to override this.
     #
     # Faster code, looks at 32 bits at a time.  Still comparatively slow.
 
-    my $word = $self->read(32, 'readahead');
+    my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
-    while ($word == 0xFFFFFFFF) {
-      die "read off end of stream" unless $self->skip(32);
-      $val += 32;
-      $word = $self->read(32, 'readahead');
+    while ($word == ~0) {
+      die "read off end of stream" unless $self->skip(maxbits);
+      $val += maxbits;
+      $word = $self->read(maxbits, 'readahead');
     }
-    while (($word & 0x80000000) != 0) {
+    while (($word >> (maxbits-1) & 1) != 0) {
       $val++;
       $word <<= 1;
     }
-    my $nbits = $val & 0x1F;
+    my $nbits = $val % maxbits;
     $self->skip($nbits + 1);
 
     push @vals, $val;

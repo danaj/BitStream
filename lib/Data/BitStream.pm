@@ -94,19 +94,31 @@ sub code_is_universal {
 
 # Pick one implementation as the default.
 #
-# String is usually fastest, but more memory than the others (1 byte per bit).
+# BLVec uses the unreleased Data::BitStream::BitList class which will probably
+# be released as Data::BitStream::XS.  Since most operations are implemented
+# in C, it is 5 to 30x faster than the others.
 #
-# WordVec is space and time efficient, hence is used as the default.
+# WordVec is the preferred Pure Perl implementation, being both space and time
+# efficient.
+#
+# String is simple and surprisingly fast, but uses more memory (1 byte per bit).
 #
 # Vec is deprecated.
 #
-# BitVec (using Bit::Vector) can be faster or slower than WordVec depending
-# on which methods are used.  It is possible that a different implementation
-# would result in much faster overall speed.
+# MinimalVec is for example only.
+#
+# BitVec uses Bit::Vector to try to obtain better performance.  While a few
+# operations (e.g. get_unary) can be fast, in general it is as slow or slower
+# than the WordVec implementation.  The main issue is that Bit::Vector uses a
+# little-endian representation which does not match what we want.
 
 use Data::BitStream::WordVec;
 use Mouse;
-extends 'Data::BitStream::WordVec';
+if (eval {require Data::BitStream::BLVec}) {
+  extends 'Data::BitStream::BLVec';
+} else {
+  extends 'Data::BitStream::WordVec';
+}
 
 # get and put methods for referencing codes by text names
 sub code_put {

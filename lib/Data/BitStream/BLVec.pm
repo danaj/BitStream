@@ -109,7 +109,7 @@ sub _generate_generic_put {
  }';
 
   if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   die "invalid parameters" unless $param;/;
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
     $st =~ s/__CALLFUNC__/$blfn(\$p, \$val)/;
   } else {
     $st =~ s/__GETPARAM__//;
@@ -148,7 +148,7 @@ sub _generate_generic_get {
   wantarray ? @vals : $vals[-1];
 }';
   if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   die "invalid parameters" unless $param;/;
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
     $st =~ s/__CALLFUNC__/$blfn(\$p)/;
   } else {
     $st =~ s/__GETPARAM__//;
@@ -164,8 +164,9 @@ sub _generate_generic_get {
 sub _generate_generic_getput {
   my $param = shift;
   my $code = shift;
-  _generate_generic_put($param, 'put_' . $code );
-  _generate_generic_get($param, 'get_' . $code );
+  my $blcode = shift || $code;
+  _generate_generic_put($param, 'put_'.$code, 'put_'.$blcode );
+  _generate_generic_get($param, 'get_'.$code, 'get_'.$blcode );
 }
 
 
@@ -176,51 +177,63 @@ _generate_generic_getput('', 'delta');
 _generate_generic_getput('', 'omega');
 _generate_generic_getput('', 'fib');
 _generate_generic_getput('', 'levenstein');
-_generate_generic_put('$p > 0 && $p <= $self->maxbits', 'put_binword', 'vwrite');
-_generate_generic_get('$p > 0 && $p <= $self->maxbits', 'get_binword', 'vread');
+_generate_generic_getput('', 'evenrodeh');
 #_generate_generic_get('', 'get_levenstein');
 
-sub put_arice {
-  my $self = shift;
-  my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    return Data::BitStream::Code::ARice::put_arice($self, $k, @_);
-  }
-  die "k must be >= 0" unless $k >= 0;
+_generate_generic_getput(
+   'die "invalid parameters" unless $p > 0',
+   'gammagolomb', 'gamma_golomb');
+_generate_generic_getput(
+   'die "invalid parameters" unless $p >= 0 && $p <= $self->maxbits',
+   'expgolomb', 'gamma_rice');
 
-  my $vref = $self->_vec;
-  foreach my $val (@_) {
-    $vref->put_adaptive_gamma_rice($k, $val);
-  }
-  $self->_setlen( $vref->getlen );
-  $k;
-}
+_generate_generic_getput(
+   'die "invalid parameters" unless $p >= -32 && $p <= 32',
+   'baer');
 
-sub get_arice {
-  my $self = shift;
-  die "get while writing" if $self->writing;
-  my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    return Data::BitStream::Code::ARice::get_arice($self, $k, @_);
-  }
-  die "k must be >= 0" unless $k >= 0;
+_generate_generic_put(
+   'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',
+   'put_binword', 'vwrite');
+_generate_generic_get(
+   'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',
+   'get_binword', 'vread');
 
-  my $count = shift;
-  if    (!defined $count) { $count = 1;  }
-  elsif ($count  < 0)     { $count = ~0; }   # Get everything
-  elsif ($count == 0)     { return;      }
-
-  my $vref = $self->_vec;
-
-  my @vals;
-  while ($count-- > 0) {
-    my $v = $vref->get_adaptive_gamma_rice($k);
-    last unless defined $v;
-    push @vals, $v;
-  }
-  $self->_setpos( $vref->getpos );
-  wantarray ? @vals : $vals[-1];
-}
+_generate_generic_put(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::ARice::put_arice($self, $p, @_);
+    }
+    die "k must be >= 0" unless $p >= 0;',
+   'put_arice', 'put_adaptive_gamma_rice');
+_generate_generic_get(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::ARice::get_arice($self, $p, @_);
+    }
+    die "k must be >= 0" unless $p >= 0;',
+   'get_arice', 'get_adaptive_gamma_rice');
+_generate_generic_put(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::Rice::put_rice($self, $p, @_);
+    }
+    die "k must be >= 0" unless $p >= 0;',
+   'put_rice');
+_generate_generic_get(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::Rice::get_rice($self, $p, @_);
+    }
+    die "k must be >= 0" unless $p >= 0;',
+   'get_rice');
+_generate_generic_put(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::Golomb::put_golomb($self, $p, @_);
+    }
+    die "m must be >= 1" unless $p >= 1;',
+   'put_golomb');
+_generate_generic_get(
+   'if (ref $p eq "CODE") {
+      return Data::BitStream::Code::Golomb::get_golomb($self, $p, @_);
+    }
+    die "m must be >= 1" unless $p >= 1;',
+   'get_golomb');
 
 sub put_string {
   my $self = shift;
@@ -247,19 +260,25 @@ sub read_string {
   $vref->read_string($bits);
 }
 
-sub to_raw_testing {
+sub to_raw {
   my $self = shift;
   $self->write_close;
   my $vref = $self->_vec;
-  my $str = $vref->to_raw;
-  print "length: ", length($str), "\n";
-
-  my $str2 = Data::BitStream::Base::to_raw($self);
-  print "length: ", length($str2), "\n";
-  die unless $str eq $str2;
-  return $str2;
+  return $vref->to_raw;
 }
 
+sub from_raw {
+  my $self = $_[0];
+  # data comes in 2nd argument
+  my $bits = $_[2] || 8*length($_[1]);
+
+  $self->write_open;
+  my $vref = $self->_vec;
+  $vref->from_raw($_[1], $bits);
+
+  $self->_setlen( $bits );
+  $self->rewind_for_read;
+}
 
 # default everything else
 

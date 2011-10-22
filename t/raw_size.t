@@ -28,7 +28,7 @@ foreach my $type (@implementations) {
     my $raw = $stream->to_raw;
     my $rawlen = length($raw);
     my $len = $stream->len;
-    my $wordlen = 4 * int( ($len + 31) / 32);
+    my $wordlen = ($stream->maxbits / 8) * int( ($len + $stream->maxbits - 1) / $stream->maxbits);
     my $bytelen = int( ($len + 7) / 8);
 
     ok( ($rawlen >= $bytelen) && ($rawlen <= $wordlen), "$type: appropriate length of raw stream" );

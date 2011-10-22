@@ -3,15 +3,15 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::GammaGolomb::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::GammaGolomb::VERSION   = '0.02';
+  $Data::BitStream::Code::GammaGolomb::VERSION   = '0.03';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
                   name      => 'GammaGolomb',
                   universal => 1,
                   params    => 1,
-                  encodesub => sub {shift->put_golomb(sub {shift->put_gamma(@_)},@_)},
-                  decodesub => sub {shift->get_golomb(sub {shift->get_gamma(@_)},@_)}, };
+                  encodesub => sub {shift->put_gammagolomb(@_)},
+                  decodesub => sub {shift->get_gammagolomb(@_)}, };
 
 use Mouse::Role;
 requires qw(put_golomb put_gamma get_golomb get_gamma);
@@ -37,7 +37,7 @@ Data::BitStream::Code::GammaGolomb - A Role implementing Gamma-Golomb codes
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 DESCRIPTION
 
