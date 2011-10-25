@@ -95,8 +95,8 @@ sub code_is_universal {
 # Pick one implementation as the default.
 #
 # BLVec uses the unreleased Data::BitStream::BitList class which will probably
-# be released as Data::BitStream::XS.  Since most operations are implemented
-# in C, it is 5 to 30x faster than the others.
+# be released as Data::BitStream::XS.  It is 50-100x faster than the others
+# for most codes.
 #
 # WordVec is the preferred Pure Perl implementation, being both space and time
 # efficient.

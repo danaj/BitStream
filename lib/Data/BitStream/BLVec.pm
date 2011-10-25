@@ -35,12 +35,12 @@ has '+len' => (trigger => sub { shift->_vec->setlen(shift) });
 
 after 'erase' => sub {
   my $self = shift;
-  $self->_vec->resize(0);
+  $self->_vec->erase;
   1;
 };
 after 'write_close' => sub {
   my $self = shift;
-  $self->_vec->resize($self->len);
+  $self->_vec->trim;
   1;
 };
 
@@ -53,10 +53,10 @@ sub read {
 
   my $vref = $self->_vec;
 
-  return $vref->vreadahead($bits)  if $peek;
+  return $vref->readahead($bits)  if $peek;
 
-  my $val = $vref->vread($bits);
-  $self->_setpos( $vref->getpos );
+  my $val = $vref->read($bits);
+  $self->_setpos( $vref->pos );
   $val;
 }
 sub write {
@@ -69,9 +69,9 @@ sub write {
 
   my $vref = $self->_vec;
 
-  $vref->vwrite($bits, $val);
+  $vref->write($bits, $val);
 
-  $self->_setlen( $vref->getlen );
+  $self->_setlen( $vref->len );
   1;
 }
 
@@ -101,10 +101,38 @@ sub _generate_generic_put {
    die "put while not writing" unless $self->writing;
    __GETPARAM__
    my $vref = $self->_vec;
+   $vref->__CALLFUNC__;
+   $self->_setlen( $vref->len );
+   1;
+ }';
+
+  if ($param ne '') {
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
+    $st =~ s/__CALLFUNC__/$blfn(\$p, \@_)/;
+  } else {
+    $st =~ s/__GETPARAM__//;
+    $st =~ s/__CALLFUNC__/$blfn(\@_)/;
+  }
+
+  no strict 'refs';
+  undef *{$fn};
+  eval $st;
+  warn $@ if $@;
+}
+sub _generate_generic_put_old {
+  my $param = shift;
+  my $fn   = shift;
+  my $blfn = shift || $fn;
+
+  my $st = "sub $fn {\n " .
+'  my $self = shift;
+   die "put while not writing" unless $self->writing;
+   __GETPARAM__
+   my $vref = $self->_vec;
    foreach my $val (@_) {
      $vref->__CALLFUNC__;
    }
-   $self->_setlen( $vref->getlen );
+   $self->_setlen( $vref->len );
    1;
  }';
 
@@ -131,28 +159,24 @@ sub _generate_generic_get {
 '  my $self = shift;
   die "get while writing" if $self->writing;
   __GETPARAM__
-  my $count = shift;
-  if    (!defined $count) { $count = 1;  }
-  elsif ($count  < 0)     { $count = ~0; }   # Get everything
-  elsif ($count == 0)     { return;      }
-
   my $vref = $self->_vec;
 
-  my @vals;
-  while ($count-- > 0) {
-    my $v = $vref->__CALLFUNC__;
-    last unless defined $v;
-    push @vals, $v;
+  if (wantarray) {
+    my @vals = $vref->__CALLFUNC__;
+    $self->_setpos( $vref->pos );
+    return @vals;
+  } else {
+    my $val = $vref->__CALLFUNC__;
+    $self->_setpos( $vref->pos );
+    return $val;
   }
-  $self->_setpos( $vref->getpos );
-  wantarray ? @vals : $vals[-1];
 }';
   if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
-    $st =~ s/__CALLFUNC__/$blfn(\$p)/;
+    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/g;
+    $st =~ s/__CALLFUNC__/$blfn(\$p, \@_)/g;
   } else {
-    $st =~ s/__GETPARAM__//;
-    $st =~ s/__CALLFUNC__/$blfn/;
+    $st =~ s/__GETPARAM__//g;
+    $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
   }
 
   no strict 'refs';
@@ -191,12 +215,9 @@ _generate_generic_getput(
    'die "invalid parameters" unless $p >= -32 && $p <= 32',
    'baer');
 
-_generate_generic_put(
+_generate_generic_getput(
    'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',
-   'put_binword', 'vwrite');
-_generate_generic_get(
-   'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',
-   'get_binword', 'vread');
+   'binword');
 
 _generate_generic_put(
    'if (ref $p eq "CODE") {
@@ -246,8 +267,8 @@ sub put_string {
     die "invalid string" if $str =~ tr/01//c;
     $vref->put_string($str);
   }
-  $self->_setlen( $vref->getlen );
-  #die "put_string len mismatch" unless $self->len == $vref->getlen();
+  $self->_setlen( $vref->len );
+  #die "put_string len mismatch" unless $self->len == $vref->len();
   1;
 }
 
