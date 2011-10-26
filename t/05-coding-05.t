@@ -33,7 +33,10 @@ sub test_encoding {
       $esub->($stream, $param, $n);
       $stream->rewind_for_read;
       my $v = $dsub->($stream, $param);
-      $success = 0 if $v != $n;
+      if ( (!defined $v) || ($v != $n) ) {
+        $success = 0;
+        last;
+      }
     }
     ok($success, "$encoding put/get from 0 to 129");
   }
