@@ -26,8 +26,9 @@ sub _hparam_map {
   my $k = shift;
   my $maxbits = shift;
 
-  my $maxh = 0;
-  $maxh++ while ($k * ($maxh+1)) < $maxbits;
+  #my $maxh = 0;
+  #$maxh++ while ($k * ($maxh+1)) < $maxbits;
+  my $maxh = int( ($maxbits-1) / $k );
   my $maxhk = $maxh * $k;
 
   my @hparams;  # stores [s threshold] for each h
@@ -62,14 +63,18 @@ sub put_boldivigna {
 
   foreach my $v (@_) {
     die "Value must be >= 0" unless $v >= 0;
-    my $val = $v+1;  # TODO encode ~0
+
+    if ($v == ~0) {
+      $self->put_unary( ($maxhk/$k)+1 );
+      next;
+    }
 
     my $hk = 0;
-    $hk += $k  while ( ($hk < $maxhk) && ($val >= (1 << ($hk+$k))) );
+    $hk += $k  while ( ($hk < $maxhk) && ($v >= ((1 << ($hk+$k))-1)) );
     my $h = $hk/$k;
     $self->put_unary($h);
 
-    my $x = $val - (1 << $hk);
+    my $x = $v - (1 << $hk) + 1;
     # Encode $x using "minimal binary code"
     my ($s, $threshold) = @{$hparams->[$h]};
     #print "using params for h=$h  [ $s, $threshold ]\n";
@@ -107,15 +112,18 @@ sub get_boldivigna {
   while ($count-- > 0) {
     my $h = $self->get_unary();
     last unless defined $h;
+    if ($h > ($maxhk/$k)) {
+      push @vals, ~0;
+      next;
+    }
     my ($s, $threshold) = @{$hparams->[$h]};
-    my $val = 1 << $h*$k;
 
     my $first = $self->read($s-1);
     if ($first >= $threshold) {
       $first = ($first << 1) + $self->read(1) - $threshold;
     }
-    $val += $first;
-    push @vals, $val-1;
+    my $val = (1 << $h*$k) + $first - 1;
+    push @vals, $val;
   }
   wantarray ? @vals : $vals[-1];
 }

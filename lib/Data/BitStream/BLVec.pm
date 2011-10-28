@@ -20,29 +20,25 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::GammaGolomb',
      'Data::BitStream::Code::ExponentialGolomb',
      'Data::BitStream::Code::Baer',
+     'Data::BitStream::Code::BoldiVigna',
      'Data::BitStream::Code::ARice',
      'Data::BitStream::Code::StartStop';
 
-use Data::BitStream::BitList;
+use Data::BitStream::XS;
 
 has '_vec' => (is => 'rw',
-               isa => 'Data::BitStream::BitList',
-               default => sub { return Data::BitStream::BitList->new(0) });
+               isa => 'Data::BitStream::XS',
+               default => sub { return Data::BitStream::XS->new(0) });
 
 # Force our pos and len sets to also set the BitList
-has '+pos' => (trigger => sub { shift->_vec->setpos(shift) });
-has '+len' => (trigger => sub { shift->_vec->setlen(shift) });
+has '+pos' => (trigger => sub { shift->_vec->_set_pos(shift) });
+has '+len' => (trigger => sub { shift->_vec->_set_len(shift) });
 
-after 'erase' => sub {
-  my $self = shift;
-  $self->_vec->erase;
-  1;
-};
-after 'write_close' => sub {
-  my $self = shift;
-  $self->_vec->trim;
-  1;
-};
+after 'rewind'      => sub { shift->_vec->rewind;      1; };
+after 'erase'       => sub { shift->_vec->erase;       1; };
+after 'read_open'   => sub { shift->_vec->read_open;   1; };
+after 'write_open'  => sub { shift->_vec->write_open;  1; };
+after 'write_close' => sub { shift->_vec->write_close; 1; };
 
 sub read {
   my $self = shift;
@@ -203,6 +199,9 @@ _generate_generic_getput('', 'fib');
 _generate_generic_getput('', 'levenstein');
 _generate_generic_getput('', 'evenrodeh');
 #_generate_generic_get('', 'get_levenstein');
+#_generate_generic_get(
+#   'die "invalid parameters" unless $p > 0 && $p <= 15',
+#   'get_boldivigna');
 
 _generate_generic_getput(
    'die "invalid parameters" unless $p > 0',
@@ -214,6 +213,10 @@ _generate_generic_getput(
 _generate_generic_getput(
    'die "invalid parameters" unless $p >= -32 && $p <= 32',
    'baer');
+
+_generate_generic_getput(
+   'die "invalid parameters" unless $p >= 1 && $p <= 15',
+   'boldivigna');
 
 _generate_generic_getput(
    'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',

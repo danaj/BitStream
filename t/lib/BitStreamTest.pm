@@ -59,19 +59,12 @@ sub impl_list {
   @ilist;
 }
   
-use Data::BitStream::Code::Escape;
-use Data::BitStream::Code::BoldiVigna;
-
 sub new_stream {
   my $type = lc shift;
   $type =~ s/[^a-z]//g;
   my $constructor = $stream_constructors{$type};
   die "Unknown stream type: $type" unless defined $constructor;
   my $stream = $constructor->();
-  if ($type ne 'xs') {
-    Data::BitStream::Code::Escape->meta->apply($stream);
-    Data::BitStream::Code::BoldiVigna->meta->apply($stream);
-  }
   return $stream;
 }
 
@@ -89,7 +82,6 @@ sub encoding_list {
   # TODO:  XS will fail with
   #            SSS(3-3-99) SS(1-0-1-0-2-12-99)
   #            DeltaGol(21) OmegaGol(21) FibGol(21) ERGol(890)
-  #            BVZeta(2)
   my @e = qw|
               Gamma Delta Omega Fib GG(3) GG(128) EG(5)
               EvenRodeh Levenstein

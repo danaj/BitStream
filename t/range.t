@@ -26,7 +26,8 @@ push @maxdata, @maxdata;
 my @implementations = impl_list;
 my @encodings = grep { is_universal($_) } encoding_list;
 # Remove codings that cannot encode ~0
-@encodings = grep { $_ !~ /^(Omega|BVZeta)/i } @encodings;
+#@encodings = grep { $_ !~ /^(Omega|BVZeta)/i } @encodings;
+@encodings = grep { $_ !~ /^(Omega)/i } @encodings;
 
 plan tests => scalar @implementations * scalar @encodings * scalar @maxdata;
 

@@ -20,6 +20,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::GammaGolomb',
      'Data::BitStream::Code::ExponentialGolomb',
      'Data::BitStream::Code::Baer',
+     'Data::BitStream::Code::BoldiVigna',
      'Data::BitStream::Code::ARice',
      'Data::BitStream::Code::StartStop';
 
