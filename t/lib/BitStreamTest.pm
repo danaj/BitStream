@@ -46,8 +46,10 @@ if (eval {require Data::BitStream::WordVec}) {
 if (eval {require Data::BitStream::BLVec}) {
   $stream_constructors{'blvec'} = sub {return Data::BitStream::BLVec->new();};
 }
-# Direct XS -- enable once we get the rest of the codes added.
-if (0 && eval {require Data::BitStream::XS}) {
+# Direct XS -- none of our tests with this module use anything the XS class
+# isn't able to handle directly.  The one big item would be any MOP (meta
+# object protocol) handling, since the XS class isn't Moose/Mouse/Moo.
+if (1 && eval {require Data::BitStream::XS}) {
   $stream_constructors{'xs'} = sub {return Data::BitStream::XS->new();};
 }
 
@@ -79,9 +81,6 @@ sub is_universal {
 }
 
 sub encoding_list {
-  # TODO:  XS will fail with
-  #            SSS(3-3-99) SS(1-0-1-0-2-12-99)
-  #            DeltaGol(21) OmegaGol(21) FibGol(21) ERGol(890)
   my @e = qw|
               Gamma Delta Omega Fib GG(3) GG(128) EG(5)
               EvenRodeh Levenstein
