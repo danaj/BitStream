@@ -110,6 +110,17 @@ sub code_is_universal {
 # operations (e.g. get_unary) can be fast, in general it is as slow or slower
 # than the WordVec implementation.  The main issue is that Bit::Vector uses a
 # little-endian representation which does not match what we want.
+#
+# bench-codes with many codes, sum:
+#
+#   BLVec       4829 ns encode    11102 ns decode   71   x
+#   String    403470 ns encode   494878 ns decode    1.3 x
+#   WordVec   457533 ns encode   676737 ns decode    1.0
+#   BitVec    492701 ns encode   666711 ns decode    0.98x
+#   Vec       549342 ns encode   927764 ns decode    0.77x
+#   MinmlVec  554690 ns encode  8252307 ns decode    0.13x
+#
+# A 32-bit HP 9000/785 gave similar results though ~15x slower overall.
 
 use Data::BitStream::WordVec;
 use Mouse;

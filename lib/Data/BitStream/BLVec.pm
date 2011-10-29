@@ -30,7 +30,7 @@ has '_vec' => (is => 'rw',
                isa => 'Data::BitStream::XS',
                default => sub { return Data::BitStream::XS->new(0) });
 
-# Force our pos and len sets to also set the BitList
+# Force our pos and len sets to also set the XS object
 has '+pos' => (trigger => sub { shift->_vec->_set_pos(shift) });
 has '+len' => (trigger => sub { shift->_vec->_set_len(shift) });
 
@@ -42,30 +42,17 @@ after 'write_close' => sub { shift->_vec->write_close; 1; };
 
 sub read {
   my $self = shift;
-  die "get while writing" if $self->writing;
-  my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
-  my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
-
   my $vref = $self->_vec;
 
-  return $vref->readahead($bits)  if $peek;
-
-  my $val = $vref->read($bits);
+  my $val = $vref->read(@_);
   $self->_setpos( $vref->pos );
   $val;
 }
 sub write {
   my $self = shift;
-  die "put while not writing" unless $self->writing;
-  my $bits = shift;
-  die "Bits must be > 0" unless $bits > 0;
-  my $val  = shift;
-  die "Undefined value" unless defined $val;
-
   my $vref = $self->_vec;
 
-  $vref->write($bits, $val);
+  $vref->write(@_);
 
   $self->_setlen( $vref->len );
   1;
@@ -84,7 +71,7 @@ sub write {
 #      Solves performance, but now unwieldy and not generic.
 #
 #   3) Use *{$fn} = sub { ... }; instead of eval.
-#      100ns slower!
+#      100ns slower, which is 0.5-2x the total function cost
 #
 
 sub _generate_generic_put {
@@ -94,7 +81,7 @@ sub _generate_generic_put {
 
   my $st = "sub $fn {\n " .
 '  my $self = shift;
-   die "put while not writing" unless $self->writing;
+   #die "put while not writing" unless $self->writing;
    __GETPARAM__
    my $vref = $self->_vec;
    $vref->__CALLFUNC__;
@@ -115,37 +102,6 @@ sub _generate_generic_put {
   eval $st;
   warn $@ if $@;
 }
-sub _generate_generic_put_old {
-  my $param = shift;
-  my $fn   = shift;
-  my $blfn = shift || $fn;
-
-  my $st = "sub $fn {\n " .
-'  my $self = shift;
-   die "put while not writing" unless $self->writing;
-   __GETPARAM__
-   my $vref = $self->_vec;
-   foreach my $val (@_) {
-     $vref->__CALLFUNC__;
-   }
-   $self->_setlen( $vref->len );
-   1;
- }';
-
-  if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
-    $st =~ s/__CALLFUNC__/$blfn(\$p, \$val)/;
-  } else {
-    $st =~ s/__GETPARAM__//;
-    $st =~ s/__CALLFUNC__/$blfn(\$val)/;
-  }
-
-  no strict 'refs';
-  undef *{$fn};
-  eval $st;
-  warn $@ if $@;
-}
-
 sub _generate_generic_get {
   my $param = shift;
   my $fn   = shift;
@@ -153,20 +109,20 @@ sub _generate_generic_get {
 
   my $st = "sub $fn {\n " .
 '  my $self = shift;
-  die "get while writing" if $self->writing;
-  __GETPARAM__
-  my $vref = $self->_vec;
+   #die "get while writing" if $self->writing;
+   __GETPARAM__
+   my $vref = $self->_vec;
 
-  if (wantarray) {
-    my @vals = $vref->__CALLFUNC__;
-    $self->_setpos( $vref->pos );
-    return @vals;
-  } else {
-    my $val = $vref->__CALLFUNC__;
-    $self->_setpos( $vref->pos );
-    return $val;
-  }
-}';
+   if (wantarray) {
+     my @vals = $vref->__CALLFUNC__;
+     $self->_setpos( $vref->pos );
+     return @vals;
+   } else {
+     my $val = $vref->__CALLFUNC__;
+     $self->_setpos( $vref->pos );
+     return $val;
+   }
+ }';
   if ($param ne '') {
     $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/g;
     $st =~ s/__CALLFUNC__/$blfn(\$p, \@_)/g;
@@ -189,7 +145,6 @@ sub _generate_generic_getput {
   _generate_generic_get($param, 'get_'.$code, 'get_'.$blcode );
 }
 
-
 _generate_generic_getput('', 'unary');
 _generate_generic_getput('', 'unary1');
 _generate_generic_getput('', 'gamma');
@@ -198,91 +153,39 @@ _generate_generic_getput('', 'omega');
 _generate_generic_getput('', 'fib');
 _generate_generic_getput('', 'levenstein');
 _generate_generic_getput('', 'evenrodeh');
+_generate_generic_getput('', 'gammagolomb');
+_generate_generic_getput('', 'expgolomb');
+_generate_generic_getput('', 'baer');
+_generate_generic_getput('', 'boldivigna');
+_generate_generic_getput('', 'binword');
+
+# The XS module understands subs, so we can map these directly
+_generate_generic_getput('', 'golomb');
+_generate_generic_getput('', 'rice');
+_generate_generic_getput('', 'arice');
+
+_generate_generic_getput('', 'startstepstop');
+_generate_generic_getput('', 'startstop');
+
 #_generate_generic_get('', 'get_levenstein');
 #_generate_generic_get(
 #   'die "invalid parameters" unless $p > 0 && $p <= 15',
 #   'get_boldivigna');
-
-_generate_generic_getput(
-   'die "invalid parameters" unless $p > 0',
-   'gammagolomb', 'gamma_golomb');
-_generate_generic_getput(
-   'die "invalid parameters" unless $p >= 0 && $p <= $self->maxbits',
-   'expgolomb', 'gamma_rice');
-
-_generate_generic_getput(
-   'die "invalid parameters" unless $p >= -32 && $p <= 32',
-   'baer');
-
-_generate_generic_getput(
-   'die "invalid parameters" unless $p >= 1 && $p <= 15',
-   'boldivigna');
-
-_generate_generic_getput(
-   'die "invalid parameters" unless $p > 0 && $p <= $self->maxbits',
-   'binword');
-
-_generate_generic_put(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::ARice::put_arice($self, $p, @_);
-    }
-    die "k must be >= 0" unless $p >= 0;',
-   'put_arice', 'put_adaptive_gamma_rice');
-_generate_generic_get(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::ARice::get_arice($self, $p, @_);
-    }
-    die "k must be >= 0" unless $p >= 0;',
-   'get_arice', 'get_adaptive_gamma_rice');
-_generate_generic_put(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::Rice::put_rice($self, $p, @_);
-    }
-    die "k must be >= 0" unless $p >= 0;',
-   'put_rice');
-_generate_generic_get(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::Rice::get_rice($self, $p, @_);
-    }
-    die "k must be >= 0" unless $p >= 0;',
-   'get_rice');
-_generate_generic_put(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::Golomb::put_golomb($self, $p, @_);
-    }
-    die "m must be >= 1" unless $p >= 1;',
-   'put_golomb');
-_generate_generic_get(
-   'if (ref $p eq "CODE") {
-      return Data::BitStream::Code::Golomb::get_golomb($self, $p, @_);
-    }
-    die "m must be >= 1" unless $p >= 1;',
-   'get_golomb');
+#_generate_generic_getput(
+#   'die "invalid parameters" unless $p >= 0 && $p <= $self->maxbits',
+#   'expgolomb', 'gamma_rice');
 
 sub put_string {
   my $self = shift;
-  die "put while reading" unless $self->writing;
-
   my $vref = $self->_vec;
 
-  foreach my $str (@_) {
-    next unless defined $str;
-    die "invalid string" if $str =~ tr/01//c;
-    $vref->put_string($str);
-  }
+  $vref->put_string(@_);
+
   $self->_setlen( $vref->len );
-  #die "put_string len mismatch" unless $self->len == $vref->len();
   1;
 }
 
-sub read_string {
-  my $self = shift;
-  my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits >= 0;
-  die "Short read" unless $bits <= ($self->len - $self->pos);
-  my $vref = $self->_vec;
-  $vref->read_string($bits);
-}
+sub read_string { shift->_vec->read_string(@_); }
 
 sub to_raw {
   my $self = shift;
