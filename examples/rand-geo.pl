@@ -11,6 +11,8 @@ use lib "$FindBin::Bin/../t/lib";
 use BitStreamTest;
 use POSIX;
 
+my $type = 'blvec';
+
 # Time with small, big, and mixed numbers.
 
 sub ceillog2 {
@@ -46,7 +48,7 @@ sub rand_geo {
   my $N = shift;
 
   # Inspired by Bio::Tools::RandomDistFunctions (Jason Stajich, Mike Sanderson)
-  # All misuse of their function is purely my fault.
+  # Any misuse of their function is purely my fault.
   my $den;
   if( $param < 1e-8) { 
       $den = (-1 * $param) - ( $param * $param ) / 2;
@@ -79,7 +81,7 @@ if (0) {
   foreach my $p2 (0 .. 8) {
     next unless ($p1 + $p2) <= 8;
     next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2)", @list);
+    my $stream = stream_encode_array($type, "ss($p1-$p2)", @list);
     my $len = $stream->len;
     if ($len < $minsize) {
       print "new min:  $len   ss($p1-$p2)\n";
@@ -92,7 +94,7 @@ if (0) {
   foreach my $p3 (0 .. 8) {
     next unless ($p1 + $p2 + $p3) <= 8;
     next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3)", @list);
+    my $stream = stream_encode_array($type, "ss($p1-$p2-$p3)", @list);
     my $len = $stream->len;
     if ($len < $minsize) {
       print "new min:  $len   ss($p1-$p2-$p3)\n";
@@ -107,7 +109,7 @@ if (0) {
   foreach my $p4 (0 .. 8) {
     next unless ($p1 + $p2 + $p3 + $p4) <= 8;
     next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3,$p4]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3-$p4)", @list);
+    my $stream = stream_encode_array($type, "ss($p1-$p2-$p3-$p4)", @list);
     my $len = $stream->len;
     if ($len < $minsize) {
       print "new min:  $len   ss($p1-$p2-$p3-$p4)\n";
@@ -124,7 +126,7 @@ if (0) {
   foreach my $p5 (0 .. 8) {
     next unless ($p1 + $p2 + $p3 + $p4 + $p5) <= 8;
     next unless BitStream::Code::StartStop::max_code_for_startstop([$p1,$p2,$p3,$p4, $p5]) >= $maxval;
-    my $stream = stream_encode_array('wordvec', "ss($p1-$p2-$p3-$p4-$p5)", @list);
+    my $stream = stream_encode_array($type, "ss($p1-$p2-$p3-$p4-$p5)", @list);
     my $len = $stream->len;
     if ($len < $minsize) {
       print "new min:  $len   ss($p1-$p2-$p3-$p4-$p5)\n";
@@ -145,7 +147,7 @@ sub time_list {
   my $encoding = shift;
   my @list = @_;
   my $s1 = [gettimeofday];
-  my $stream = stream_encode_array('wordvec', $encoding, @list);
+  my $stream = stream_encode_array($type, $encoding, @list);
   die "Stream ($encoding) construction failure" unless defined $stream;
   my $e1 = int(tv_interval($s1)*1_000_000);
   my $len = $stream->len;

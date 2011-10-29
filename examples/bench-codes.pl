@@ -21,15 +21,32 @@ sub ceillog2 {
 }
 
 my $add_golomb = 0;
+my @encodings;
 
-my @encodings = qw(Unary Gamma Delta Omega Fibonacci);
-#my @encodings = qw|gamma delta omega fib fibc2 gg(3) mgg3 flag(2-5-8-20) sss(2-3-20)|;
-#my @encodings = qw|gamma delta omega evenrodeh fib fibc2 binword(64) gg(11) deltagol(11) omegagol(11) ergol(11) fibgol(11) mgg3 eg(3) golomb(12) rice(3) sss(2-3-20) ss(5-6-9) ss(2-3-3-3-5-4)|;
-#my @encodings = qw|gamma delta gg(11) eg(3)|;
-#my @encodings = qw|unary gamma delta omega fib bvzeta(2) bvzeta(3) baer(0) baer(-1) baer(-2) baer(-3) baer(1) baer(2) baer(3)|;
-#my @encodings = qw|fib fibc2|;
-#my @encodings = qw|gamma delta omega levenstein bvzeta(2) bvzeta(5) ss(5-6-9) ss(5-5-4-6) ss(2-6-3-5-4) ss(2-3-3-3-5-4) ss(2-3-3-3-3-2-4)|;
-#my @encodings = qw|sss(2-3-20) ss(0-1-3-5-12)|;
+@encodings = qw|
+  Gamma
+  Delta
+  Omega
+  EvenRodeh
+  Levenstein
+  Fibonacci
+  Unary
+  Unary1
+  Baer(0)
+  Baer(-2)
+  Baer(2)
+  BoldiVigna(4)
+  Golomb(3)
+  Rice(2)
+  ARice(2)
+  Golomb(177)
+  GammaGolomb(3)
+  ExpGolomb(3)
+  StartStop(0-0-2-4-14)
+  StartStepStop(3-2-20)
+  BinWord(20)
+|;
+@encodings = qw|Unary Gamma Delta Omega Fibonacci ARice(2)|;
 
 my $list_n = 2048;
 my @list_small;
@@ -88,12 +105,18 @@ if ($add_golomb) {
   push @encodings, 'golomb(' . int(0.69 * $avg_large) . ')';
 }
 
+my $tot_encode_time = 0;
+my $tot_decode_time = 0;
+
 print "Small (avg $avg_small, $bytes_small binary):\n";
   time_list($_, @list_small) for (@encodings);
 print "Medium (avg $avg_medium, $bytes_medium binary):\n";
   time_list($_, @list_medium) for (@encodings);
 print "Large (avg $avg_large, $bytes_large binary):\n";
   time_list($_, @list_large) for (@encodings);
+
+#print "total encode: $tot_encode_time\n";
+#print "total decode: $tot_decode_time\n";
 
 sub time_list {
   my $encoding = shift;
@@ -127,6 +150,8 @@ sub time_list {
   $e2 = int(1000 * ($e2 / scalar @list));
   printf "   %-17s: %8d bytes  %6d ns encode  %6d ns decode\n", 
          $encoding, int(($len+7)/8), $e1, $e2;
+  $tot_encode_time += $e1;
+  $tot_decode_time += $e2;
   1;
 }
 
