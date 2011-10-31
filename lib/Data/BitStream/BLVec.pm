@@ -28,7 +28,7 @@ use Data::BitStream::XS;
 
 has '_vec' => (is => 'rw',
                isa => 'Data::BitStream::XS',
-               default => sub { return Data::BitStream::XS->new(0) });
+               default => sub { return Data::BitStream::XS->new });
 
 # Force our pos and len sets to also set the XS object
 has '+pos' => (trigger => sub { shift->_vec->_set_pos(shift) });
@@ -81,24 +81,17 @@ sub _generate_generic_put {
 
   my $st = "sub $fn {\n " .
 '  my $self = shift;
-   #die "put while not writing" unless $self->writing;
-   __GETPARAM__
+   __PARAM__
    my $vref = $self->_vec;
    $vref->__CALLFUNC__;
    $self->_setlen( $vref->len );
    1;
  }';
 
-  if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/;
-    $st =~ s/__CALLFUNC__/$blfn(\$p, \@_)/;
-  } else {
-    $st =~ s/__GETPARAM__//;
-    $st =~ s/__CALLFUNC__/$blfn(\@_)/;
-  }
+  $st =~ s/__PARAM__/$param/;
+  $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
 
-  no strict 'refs';
-  undef *{$fn};
+  { no strict 'refs'; undef *{$fn}; }
   eval $st;
   warn $@ if $@;
 }
@@ -109,10 +102,8 @@ sub _generate_generic_get {
 
   my $st = "sub $fn {\n " .
 '  my $self = shift;
-   #die "get while writing" if $self->writing;
-   __GETPARAM__
+   __PARAM__
    my $vref = $self->_vec;
-
    if (wantarray) {
      my @vals = $vref->__CALLFUNC__;
      $self->_setpos( $vref->pos );
@@ -123,16 +114,11 @@ sub _generate_generic_get {
      return $val;
    }
  }';
-  if ($param ne '') {
-    $st =~ s/__GETPARAM__/my \$p = shift;\n   $param;/g;
-    $st =~ s/__CALLFUNC__/$blfn(\$p, \@_)/g;
-  } else {
-    $st =~ s/__GETPARAM__//g;
-    $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
-  }
 
-  no strict 'refs';
-  undef *{$fn};
+  $st =~ s/__PARAM__/$param/;
+  $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
+
+  { no strict 'refs'; undef *{$fn}; }
   eval $st;
   warn $@ if $@;
 }

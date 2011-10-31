@@ -46,7 +46,7 @@ my @encodings;
   StartStepStop(3-2-20)
   BinWord(20)
 |;
-@encodings = qw|Unary Gamma Delta Omega Fibonacci ARice(2)|;
+@encodings = qw|Unary Gamma Delta Omega Fibonacci|;
 
 my $list_n = 2048;
 my @list_small;
@@ -131,6 +131,7 @@ sub time_list {
   my $stream = Data::BitStream->new;
   die "Stream construction failure" unless defined $stream;
   $stream->code_put($encoding, @list);
+  #foreach my $v (@list) { $stream->code_put($encoding, $v); }
 
   my $e1 = int(tv_interval($s1)*1_000_000);
   my $len = $stream->len;
@@ -140,6 +141,7 @@ sub time_list {
 
   $stream->rewind_for_read;
   my @a = $stream->code_get($encoding, -1);
+  #my @a=(); while (defined (my $v = $stream->code_get($encoding))) {push @a,$v;}
 
   my $e2 = int(tv_interval($s2)*1_000_000);
   foreach my $i (0 .. $#list) {

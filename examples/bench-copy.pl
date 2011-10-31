@@ -8,6 +8,7 @@ use FindBin;  use lib "$FindBin::Bin/../lib";
 use Data::BitStream::WordVec;
 use Data::BitStream::String;
 use Data::BitStream::BLVec;
+#use Data::BitStream::XS;
 #use Data::BitStream::Vec;
 #use Data::BitStream::BitVec;
 
@@ -30,6 +31,7 @@ my %s1 = (
   'blvec',   Data::BitStream::BLVec->new,
   #'vec    ', Data::BitStream::Vec->new,
   #'bitvec ', Data::BitStream::BitVec->new,
+  #'xs',      Data::BitStream::XS->new,
 );
 my %s2 = (
   'string ', Data::BitStream::String->new,
@@ -37,6 +39,7 @@ my %s2 = (
   'blvec',   Data::BitStream::BLVec->new,
   #'vec    ', Data::BitStream::Vec->new,
   #'bitvec ', Data::BitStream::BitVec->new,
+  #'xs',      Data::BitStream::XS->new,
 );
 
 foreach my $s1name (keys %s1) {
