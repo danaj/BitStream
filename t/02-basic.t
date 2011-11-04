@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 
 
-my @types = qw(string vector bitvector wordvec);
+my @types = qw(string wordvec xs);
 plan tests => scalar @types;
 
 # We require the string implementation, and will test the Vec and BitVec
@@ -16,14 +16,17 @@ use Data::BitStream::String;
 my %stream_constructors = (
   'string', sub { return Data::BitStream::String->new(); },
 );
-if (eval {require Data::BitStream::Vec}) {
-  $stream_constructors{'vector'} = sub { return Data::BitStream::Vec->new(); };
-}
-if (eval {require Data::BitStream::BitVec}) {
-  $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
-}
+#if (eval {require Data::BitStream::Vec}) {
+#  $stream_constructors{'vector'} = sub { return Data::BitStream::Vec->new(); };
+#}
+#if (eval {require Data::BitStream::BitVec}) {
+#  $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
+#}
 if (eval {require Data::BitStream::WordVec}) {
   $stream_constructors{'wordvec'} = sub { return Data::BitStream::WordVec->new(); };
+}
+if (eval {require Data::BitStream::XS}) {
+  $stream_constructors{'xs'} = sub { return Data::BitStream::XS->new(); };
 }
 
 

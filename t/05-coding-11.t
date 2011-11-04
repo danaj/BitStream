@@ -20,10 +20,9 @@ done_testing();
 sub test_encoding {
   my $encoding = shift;
 
-  plan tests => scalar @implementations;
+  plan tests => 2 * scalar @implementations;
 
   foreach my $type (@implementations) {
-    my $success = 1;
     my $maxbits = 16;
     my $maxpat  = 0xFFFF;
     if (is_universal($encoding)) {
@@ -43,10 +42,7 @@ sub test_encoding {
     my $stream = stream_encode_array($type, $encoding, @data);
     BAIL_OUT("No stream of type $type") unless defined $stream;
     my @v = stream_decode_array($encoding, $stream);
-    foreach my $i (0 .. $#data) {
-      $success = 0 if $v[$i] != $data[$i];
-    }
-    $success = 0 if $stream->pos != $stream->len;
-    ok($success, "$encoding put/get bit patterns using $type");
+    is_deeply( \@v, \@data, "$encoding put/get bit patterns using $type");
+    is($stream->pos, $stream->len);
   }
 }

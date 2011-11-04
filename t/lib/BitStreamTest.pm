@@ -40,6 +40,9 @@ if (full_testing && eval {require Data::BitStream::Vec}) {
 if (full_testing && eval {require Data::BitStream::BitVec}) {
   $stream_constructors{'bitvector'} = sub { return Data::BitStream::BitVec->new(); };
 }
+if (full_testing && eval {require Data::BitStream::MinimalVec}) {
+  $stream_constructors{'minimalvec'} = sub { return Data::BitStream::MinimalVec->new(); };
+}
 if (eval {require Data::BitStream::WordVec}) {
   $stream_constructors{'wordvec'} = sub {return Data::BitStream::WordVec->new();};
 }

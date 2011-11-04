@@ -40,33 +40,20 @@ foreach my $type (@implementations) {
 
     $stream->erase;
 
-    $stream->from_string($str, $bits);
     {
-      my $success = 1;
+      $stream->from_string($str, $bits);
       my @v = stream_decode_array($encoding, $stream);
-      foreach my $i (0 .. $#data) {
-        $success = 0 if $v[$i] != $data[$i];
-      }
-      ok($success, "$type export/import via string");
+      is_deeply( \@v, \@data, "$type export/import via string");
     }
-    $stream->from_raw($raw, $bits);
     {
-      my $success = 1;
+      $stream->from_raw($raw, $bits);
       my @v = stream_decode_array($encoding, $stream);
-      foreach my $i (0 .. $#data) {
-        $success = 0 if $v[$i] != $data[$i];
-      }
-      ok($success, "$type export/import via raw");
+      is_deeply( \@v, \@data, "$type export/import via raw");
     }
-    $stream->from_store($store, $bits);
     {
-      my $success = 1;
+      $stream->from_store($store, $bits);
       my @v = stream_decode_array($encoding, $stream);
-      foreach my $i (0 .. $#data) {
-        $success = 0 if $v[$i] != $data[$i];
-      }
-      ok($success, "$type export/import via store");
+      is_deeply( \@v, \@data, "$type export/import via store");
     }
   }
 }
-done_testing();

@@ -23,7 +23,6 @@ sub test_encoding {
   plan tests => scalar @implementations;
 
   foreach my $type (@implementations) {
-    my $success = 1;
     my $nvals = 500;
     my @data;
     srand(52);
@@ -33,9 +32,6 @@ sub test_encoding {
     my $stream = stream_encode_array($type, $encoding, @data);
     BAIL_OUT("No stream of type $type") unless defined $stream;
     my @v = stream_decode_array($encoding, $stream);
-    foreach my $i (0 .. $#data) {
-      $success = 0 if $v[$i] != $data[$i];
-    }
-    ok($success, "$encoding store $nvals random values using $type");
+    is_deeply( \@v, \@data, "$encoding store $nvals random values using $type");
   }
 }

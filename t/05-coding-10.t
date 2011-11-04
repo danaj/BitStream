@@ -23,7 +23,6 @@ sub test_encoding {
   plan tests => 2 * scalar @implementations;
 
   foreach my $type (@implementations) {
-    my $success = 1;
     my $nfibs = 30;
     if (is_universal($encoding)) {
       $nfibs = 47;
@@ -45,10 +44,7 @@ sub test_encoding {
       my $stream = stream_encode_array($type, $encoding, @data);
       BAIL_OUT("No stream of type $type") unless defined $stream;
       my @v = stream_decode_array($encoding, $stream);
-      foreach my $i (0 .. $#data) {
-        $success = 0 if $v[$i] != $data[$i];
-      }
-      ok($success, "$encoding store F(0) - F($nfibs) using $type");
+      is_deeply( \@v, \@data, "$encoding store F(0) - F($nfibs) using $type");
     }
 
     {
@@ -56,10 +52,7 @@ sub test_encoding {
       my $stream = stream_encode_array($type, $encoding, @data);
       BAIL_OUT("No stream of type $type") unless defined $stream;
       my @v = stream_decode_array($encoding, $stream);
-      foreach my $i (0 .. $#data) {
-        $success = 0 if $v[$i] != $data[$i];
-      }
-      ok($success, "$encoding store F($nfibs) - F(0) using $type");
+      is_deeply( \@v, \@data, "$encoding store F($nfibs) - F(0) using $type");
     }
   }
 }

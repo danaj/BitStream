@@ -15,7 +15,6 @@ foreach my $type (@implementations) {
   my $encoding = 'gamma';
 
   {
-    my $success = 1;
     my $nvals = 500;
     my @data;
     srand(110);
