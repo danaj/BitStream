@@ -72,7 +72,7 @@ sub time_put {
   $s2->put_stream($s1);
   my $e1 = int(tv_interval($t1)*1_000_000);
   printf(" put %-7s to %-7s  %7.3fms\n", $s1name, $s2name, $e1/1000);
-  die "copy didn't work" unless $s2->to_string eq $put_master->to_string;
+  die "put didn't work" unless $s2->to_string eq $put_master->to_string;
   $s2->erase_for_write;
   1;
 }

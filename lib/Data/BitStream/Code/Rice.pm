@@ -8,7 +8,7 @@ BEGIN {
 
 our $CODEINFO = { package   => __PACKAGE__,
                   name      => 'Rice',
-                  universal => 1,
+                  universal => 0,
                   params    => 1,
                   encodesub => sub {shift->put_rice(@_)},
                   decodesub => sub {shift->get_rice(@_)}, };

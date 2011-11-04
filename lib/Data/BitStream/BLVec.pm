@@ -193,6 +193,21 @@ sub from_raw {
   $self->rewind_for_read;
 }
 
+sub put_stream {
+  my $self = shift;
+  my $source = shift;
+  my $vref = $self->_vec;
+
+  if (ref $source eq __PACKAGE__) {
+    $vref->put_stream($source->_vec);
+  } else {
+    $vref->put_stream($source);
+  }
+
+  $self->_setlen( $vref->len );
+  1;
+}
+
 # default everything else
 
 __PACKAGE__->meta->make_immutable;
