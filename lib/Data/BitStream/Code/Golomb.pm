@@ -8,7 +8,7 @@ BEGIN {
 
 our $CODEINFO = { package   => __PACKAGE__,
                   name      => 'Golomb',
-                  universal => 1,
+                  universal => 0,
                   params    => 1,
                   encodesub => sub {shift->put_golomb(@_)},
                   decodesub => sub {shift->get_golomb(@_)}, };
