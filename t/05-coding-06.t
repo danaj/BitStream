@@ -30,7 +30,8 @@ sub test_encoding {
     my ($esub, $dsub, $param) = sub_for_string($encoding);
     BAIL_OUT("No sub for encoding $encoding") unless defined $esub and defined $dsub;
     my $success = 1;
-    foreach my $n (0 .. 129) {
+    my @data = (0 .. 67, 81, 96, 107, 127, 128, 129, 255, 256, 257, 510, 511, 512, 513);
+    foreach my $n (@data) {
       # 1. Write value into stream1
       $stream1->erase_for_write;
       $esub->($stream1, $param, $n);
@@ -49,6 +50,6 @@ sub test_encoding {
       $success = 0 if $v != $n;
       last unless $success;
     }
-    ok($success, "$encoding put/get strings from 0 to 129");
+    ok($success, "$encoding put/get strings from 0 to 513");
   }
 }

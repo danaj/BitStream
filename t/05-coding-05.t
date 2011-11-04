@@ -27,16 +27,15 @@ sub test_encoding {
     BAIL_OUT("No stream of type $type") unless defined $stream;
     my ($esub, $dsub, $param) = sub_for_string($encoding);
     BAIL_OUT("No sub for encoding $encoding") unless defined $esub and defined $dsub;
-    my @expect;
     my @got;
-    foreach my $n (0 .. 129) {
+    my @data = (0 .. 67, 81, 96, 107, 127, 128, 129, 255, 256, 257, 510, 511, 512, 513);
+    foreach my $n (@data) {
       $stream->erase_for_write;
       $esub->($stream, $param, $n);
-      push @expect, $n;
       $stream->rewind_for_read;
       my $v = $dsub->($stream, $param);
       push @got, $v;
     }
-    is_deeply( \@expect, \@got, "$encoding put/get from 0 to 129");
+    is_deeply( \@data, \@got, "$encoding put/get values between 0 and 513");
   }
 }

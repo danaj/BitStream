@@ -23,7 +23,7 @@ sub test_encoding {
   plan tests => 2 * scalar @implementations;
 
   foreach my $type (@implementations) {
-    my $nfibs = 30;
+    my $nfibs = 22;
     if (is_universal($encoding)) {
       $nfibs = 47;
       {
