@@ -158,14 +158,15 @@ sub get_fib {
   while ($count-- > 0) {
     my $code = $self->get_unary;
     last unless defined $code;
-    my $val = 0;
+    # Start with -1 here instead of subtracting it later.  No overflow issues.
+    my $val = -1;
     my $b = -1;
     do {
       die "Read off end of stream" unless defined $code;
       $b += $code+1;
       $val += $fibs[$b];
     } while ($code = $self->get_unary);
-    push @vals, $val-1;
+    push @vals, $val;
   }
   wantarray ? @vals : $vals[-1];
 }

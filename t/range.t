@@ -7,7 +7,7 @@ use List::Util qw(shuffle);
 use lib qw(t/lib);
 use BitStreamTest;
 
-my $maxval = (~0);
+my $maxval = ~0;
 my @maxdata = (0, 1, 2, 33, 65, 129,
                ($maxval >> 1) - 2,
                ($maxval >> 1) - 1,
@@ -36,7 +36,7 @@ foreach my $type (@implementations) {
 
     my $stream = stream_encode_array($type, $encoding, @maxdata);
     my @v = stream_decode_array($encoding, $stream);
-    is_deeply( \@maxdata, \@v, "$type: $encoding range patterns");
+    is_deeply( \@v, \@maxdata, "$type: $encoding range patterns");
 
   }
 }
