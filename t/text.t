@@ -57,13 +57,13 @@ my $stream = Data::BitStream->new;
 my $mod = 8000;
 
 foreach my $code (@codes) {
-  my $v = unpack("%32W*", $code) % $mod;
+  my $v = unpack("%32C*", $code) % $mod;
   #print "putting $v with $code\n";
   $stream->code_put($code, $v);
 }
 $stream->rewind_for_read;
 foreach my $code (@codes) {
-  my $expect = unpack("%32W*", $code) % $mod;
+  my $expect = unpack("%32C*", $code) % $mod;
   my $v = $stream->code_get($code);
   is($v,$expect, "get with $code");
 }
