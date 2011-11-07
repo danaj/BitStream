@@ -84,10 +84,7 @@ sub code_is_universal {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
   my $inforef = find_code($code);
-  if (!defined $inforef) {
-    warn "code_is_universal: unknown code '$code'\n";
-    return 0;
-  }
+  return undef unless defined $inforef;  # Unknown code.
   return $inforef->{'universal'};
 }
 
@@ -299,7 +296,7 @@ the C<bits> argument to C<read> and C<write>.  This will be either 32 or 64.
 
 =head2 OBJECT METHODS (I<reading>)
 
-These methods are only value while the stream is in reading state.
+These methods are only valid while the stream is in reading state.
 
 =over 4
 
@@ -331,7 +328,7 @@ as '0011011'.
 
 =head2 OBJECT METHODS (I<writing>)
 
-These methods are only value while the stream is in writing state.
+These methods are only valid while the stream is in writing state.
 
 =over 4
 

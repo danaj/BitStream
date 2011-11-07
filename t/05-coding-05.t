@@ -36,6 +36,6 @@ sub test_encoding {
       my $v = $dsub->($stream, $param);
       push @got, $v;
     }
-    is_deeply( \@data, \@got, "$encoding put/get values between 0 and 513");
+    is_deeply( \@got, \@data, "$encoding put/get values between 0 and 513");
   }
 }

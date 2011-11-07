@@ -119,7 +119,7 @@ sub skip {
   my $skip = shift;
   my $pos = $self->pos;
   my $len = $self->len;
-  return 0 if ($pos + $skip) > $len;
+  die "skip off stream" if ($pos + $skip) > $len;
   $self->_setpos($pos + $skip);
   1;
 }
@@ -618,7 +618,7 @@ the C<bits> argument to C<read> and C<write>.  This will be either 32 or 64.
 
 =head2 OBJECT METHODS (I<reading>)
 
-These methods are only value while the stream is in reading state.
+These methods are only valid while the stream is in reading state.
 
 =over 4
 
@@ -674,7 +674,7 @@ as '0011011'.
 
 =head2 OBJECT METHODS (I<writing>)
 
-These methods are only value while the stream is in writing state.
+These methods are only valid while the stream is in writing state.
 
 =over 4
 
