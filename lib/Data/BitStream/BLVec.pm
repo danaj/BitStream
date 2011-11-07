@@ -91,8 +91,7 @@ sub _generate_generic_put {
   $st =~ s/__PARAM__/$param/;
   $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
 
-  { no strict 'refs'; undef *{$fn}; }
-  eval $st;
+  { no warnings 'redefine';  eval $st; }
   warn $@ if $@;
 }
 sub _generate_generic_get {
@@ -118,8 +117,7 @@ sub _generate_generic_get {
   $st =~ s/__PARAM__/$param/;
   $st =~ s/__CALLFUNC__/$blfn(\@_)/g;
 
-  { no strict 'refs'; undef *{$fn}; }
-  eval $st;
+  { no warnings 'redefine';  eval $st; }
   warn $@ if $@;
 }
 
