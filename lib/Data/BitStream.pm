@@ -4,7 +4,7 @@ package Data::BitStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # Since we're using Moose/Mouse, things get rather messed up if we try to
 # inherit from Exporter.  Really all we want is the ability to let people
@@ -84,7 +84,7 @@ sub code_is_universal {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
   my $inforef = find_code($code);
-  return undef unless defined $inforef;  # Unknown code.
+  return unless defined $inforef;  # Unknown code.
   return $inforef->{'universal'};
 }
 
