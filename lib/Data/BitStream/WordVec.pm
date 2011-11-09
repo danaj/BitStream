@@ -42,9 +42,9 @@ after 'erase' => sub {
 
 sub read {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
@@ -81,11 +81,11 @@ sub read {
 }
 sub write {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "Undefined value" unless defined $val;
+  die "undefined value" unless defined $val;
 
   my $len  = $self->len;
   my $new_len = $len + $bits;
@@ -97,7 +97,7 @@ sub write {
 
   if ($val == 1) { $len += $bits-1; $bits = 1; }
 
-  die "Invalid bits" if $bits > $self->maxbits;
+  die "invalid bits: $bits" if $bits > $self->maxbits;
 
   my $wpos = $len >> 5;       # / 32
   my $bpos = $len & 0x1F;     # % 32
@@ -130,7 +130,7 @@ sub write {
 
 sub put_unary {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
@@ -152,7 +152,7 @@ sub put_unary {
 
 sub get_unary {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -220,12 +220,13 @@ sub get_unary {
 # This is pretty important for speed
 sub put_gamma {
   my $self = shift;
+  die "write while reading" unless $self->writing;
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless $val >= 0;
 
     my $wpos = $len >> 5;      # / 32
     my $bpos = $len & 0x1F;    # % 32
@@ -314,7 +315,7 @@ sub put_gamma {
 
 sub put_string {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $len = $self->len;
   my $rvec = $self->_vecref;

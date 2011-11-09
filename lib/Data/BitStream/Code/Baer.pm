@@ -26,7 +26,7 @@ requires 'read', 'write', 'put_unary', 'get_unary';
 sub put_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k > 32;
+  die "invalid parameters" if $k > 32 || $k < -32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   foreach my $v (@_) {
@@ -63,7 +63,7 @@ sub put_baer {
 sub get_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k > 32;
+  die "invalid parameters" if $k > 32 || $k < -32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   my $count = shift;

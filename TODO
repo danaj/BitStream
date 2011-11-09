@@ -3,6 +3,12 @@
 
 - tests for invalid behavior
 - tests for consistent die return strings
+  - read unary off end of stream
+  - put negative numbers should give "value must be >= 0" for all put_*
+  - write with undefined value
+  - put_* with undefined parameters or undef value
+  - get_* with undefined parameters
+  - put_string with invalid string (e.g. '0012')
 
 - Export
 

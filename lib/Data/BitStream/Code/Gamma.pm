@@ -29,9 +29,10 @@ requires qw(maxbits read write put_unary get_unary);
 
 sub put_gamma {
   my $self = shift;
+  die "write while reading" unless $self->writing;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless $val >= 0;
     # Simple:
     #
     #   my $base = 0;
@@ -60,6 +61,7 @@ sub put_gamma {
 
 sub get_gamma {
   my $self = shift;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything

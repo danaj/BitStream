@@ -245,7 +245,7 @@ sub put_unary {
 }
 sub get_unary {            # You ought to override this.
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -270,7 +270,7 @@ sub get_unary {            # You ought to override this.
     my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
     while ($word == 0) {
-      die "read off end of stream" unless $self->skip(maxbits);
+      die "read off stream" unless $self->skip(maxbits);
       $val += maxbits;
       $word = $self->read(maxbits, 'readahead');
     }
@@ -306,7 +306,7 @@ sub put_unary1 {
 }
 sub get_unary1 {            # You ought to override this.
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -352,7 +352,7 @@ sub get_unary1 {            # You ought to override this.
 sub put_binword {
   my $self = shift;
   my $bits = shift;
-  die "invalid parameters" if ($bits < 0) || ($bits > maxbits);
+  die "invalid parameters" if ($bits <= 0) || ($bits > maxbits);
 
   foreach my $val (@_) {
     $self->write($bits, $val);
@@ -361,9 +361,9 @@ sub put_binword {
 }
 sub get_binword {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $bits = shift;
-  die "invalid parameters" if ($bits < 0) || ($bits > maxbits);
+  die "invalid parameters" if ($bits <= 0) || ($bits > maxbits);
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -382,7 +382,7 @@ sub get_binword {
 # Write one or more text binary strings (e.g. '10010')
 sub put_string {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   foreach my $str (@_) {
     next unless defined $str;
@@ -406,8 +406,8 @@ sub put_string {
 sub read_string {
   my $self = shift;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits >= 0;
-  die "Short read" unless $bits <= ($self->len - $self->pos);
+  die "invalid bits: $bits" unless defined $bits && $bits >= 0;
+  die "short read" unless $bits <= ($self->len - $self->pos);
   my $str = '';
   while ($bits >= 32) {
     $str .= unpack("B32", pack("N", $self->read(32)));

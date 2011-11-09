@@ -49,7 +49,7 @@ sub _hparam_map {
 sub put_boldivigna {
   my $self = shift;
   my $k = shift;
-  die "k must be >= 1" unless $k >= 1;
+  die "invalid parameters" if $k < 1 || $k > 15;
 
   return $self->put_gamma(@_) if $k == 1;
 
@@ -91,7 +91,7 @@ sub put_boldivigna {
 sub get_boldivigna {
   my $self = shift;
   my $k = shift;
-  die "k must be >= 1" unless $k >= 1;
+  die "invalid parameters" if $k < 1 || $k > 15;
 
   return $self->get_gamma(@_) if $k == 1;
 

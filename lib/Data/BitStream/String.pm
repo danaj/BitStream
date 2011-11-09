@@ -40,9 +40,9 @@ after 'erase' => sub {
 };
 sub read {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
@@ -69,11 +69,11 @@ sub read {
 }
 sub write {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "Undefined value" unless defined $val;
+  die "undefined value" unless defined $val;
 
   my $rstr = $self->_strref;
 
@@ -84,7 +84,7 @@ sub write {
     $$rstr .= '1';
   } else {
 
-    die "Invalid bits" if $bits > $self->maxbits;
+    die "invalid bits: $bits" if $bits > $self->maxbits;
 
     # The following is typically fastest with 5.9.2 and later:
     #
@@ -112,7 +112,7 @@ sub write {
 
 sub put_unary {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $rstr = $self->_strref;
   my $len = $self->len;
@@ -127,7 +127,7 @@ sub put_unary {
 }
 sub get_unary {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -141,7 +141,7 @@ sub get_unary {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '1', $pos );
-    die "read off end of stream" if $onepos == -1;
+    die "read off stream" if $onepos == -1;
     my $val = $onepos - $pos;
     $pos = $onepos + 1;
     push @vals, $val;
@@ -152,7 +152,7 @@ sub get_unary {
 
 sub put_unary1 {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $rstr = $self->_strref;
   my $len = $self->len;
@@ -167,7 +167,7 @@ sub put_unary1 {
 }
 sub get_unary1 {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -181,7 +181,7 @@ sub get_unary1 {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '0', $pos );
-    die "read off end of stream" if $onepos == -1;
+    die "read off stream" if $onepos == -1;
     my $val = $onepos - $pos;
     $pos = $onepos + 1;
     push @vals, $val;
@@ -192,13 +192,13 @@ sub get_unary1 {
 
 sub put_gamma {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $rstr = $self->_strref;
   my $len = $self->len;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless $val >= 0;
     my $vstr;
     if    ($val == 0)  { $vstr = '1'; }
     elsif ($val == 1)  { $vstr = '010'; }
@@ -225,6 +225,7 @@ sub put_gamma {
 
 sub get_gamma {
   my $self = shift;
+  die "read while writing" if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -238,7 +239,7 @@ sub get_gamma {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '1', $pos );
-    die "read off end of stream" if $onepos == -1;
+    die "read off stream" if $onepos == -1;
     my $base = $onepos - $pos;
     $pos = $onepos + 1;
     if    ($base == 0) {  push @vals, 0; }
@@ -257,7 +258,7 @@ sub get_gamma {
 
 sub put_string {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  die "write while reading" unless $self->writing;
 
   my $len = $self->len;
   my $rstr = $self->_strref;
@@ -276,12 +277,13 @@ sub put_string {
 }
 sub read_string {
   my $self = shift;
+  die "read while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits >= 0;
+  die "invalid bits: $bits" unless defined $bits && $bits >= 0;
 
   my $len = $self->len;
   my $pos = $self->pos;
-  die "Short read" unless $bits <= ($len - $pos);
+  die "short read" unless $bits <= ($len - $pos);
   my $rstr = $self->_strref;
 
   $self->_setpos( $pos + $bits );

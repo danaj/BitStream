@@ -31,9 +31,9 @@ after 'erase' => sub { shift->_vec(''); 1; };
 
 sub read {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  die "read while writing" if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
@@ -50,12 +50,13 @@ sub read {
 }
 sub write {
   my $self = shift;
+  die "write while reading" unless $self->writing;
   my $bits = shift;
+  die "invalid bits: $bits" unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "Bits must be > 0" unless $bits > 0;
-  my $len  = $self->len;
-  die "put while not writing" unless $self->writing;
+  die "undefined value" unless defined $val;
 
+  my $len  = $self->len;
   my $rvec = $self->_vecref;
 
   if ($val == 0) {
@@ -63,7 +64,7 @@ sub write {
   } elsif ($val == 1) {
     vec($$rvec, $len + $bits - 1, 1) = 1;
   } else {
-    die "bits must be <= " . $self->maxbits . "\n" if $bits > $self->maxbits;
+    die "invalid bits: $bits" if $bits > $self->maxbits;
 
     my $wpos = $len + $bits-1;
     foreach my $bit (0 .. $bits-1) {
