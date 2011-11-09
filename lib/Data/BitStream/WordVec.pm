@@ -83,7 +83,7 @@ sub write {
   my $self = shift;
   die "put while reading" unless $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  die "Invalid bits" unless defined $bits && $bits > 0;
   my $val  = shift;
   die "Undefined value" unless defined $val;
 
@@ -95,7 +95,9 @@ sub write {
     return 1;
   }
 
-  if ($val == 1) { $len += $bits-1; $bits = 1; } # optimize
+  if ($val == 1) { $len += $bits-1; $bits = 1; }
+
+  die "Invalid bits" if $bits > $self->maxbits;
 
   my $wpos = $len >> 5;       # / 32
   my $bpos = $len & 0x1F;     # % 32

@@ -226,10 +226,11 @@ sub put_unary {
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
 
-    # This works for most write implementations, and will be super fast:
+    # Since the write routine is allowed to take any number of bits when
+    # writing 0 and 1, this works, and is very fast.
     $self->write($val+1, 1);
 
-    # Alternate safer implementation, much slower for large values:
+    # Alternate implementation, much slower for large values:
     #
     # if ($val < maxbits) {
     #   $self->write($val+1, 1);
@@ -292,7 +293,7 @@ sub put_unary1 {
 
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
-    if ($val < 32) {
+    if ($val < maxbits) {
       $self->write($val+1, ~0 << 1);
     } else {
       my $nbits  = $val % maxbits;
@@ -681,10 +682,10 @@ These methods are only valid while the stream is in writing state.
 =item B< write($bits, $value) >
 
 Writes C<$value> to the stream using C<$bits> bits.  
-C<$bits> must be between C<1> and C<maxbits>.
+C<$bits> must be between C<1> and C<maxbits>, unless C<value> is 0 or 1, in
+which case C<bits> may be larger than C<maxbits>.
 
-The length is increased by C<$bits> bits.
-
+The stream length will be increased by C<$bits> bits.
 Regardless of the contents of C<$value>, exactly C<$bits> bits will be used.
 If C<$value> has more non-zero bits than C<$bits>, the lower bits are written.
 In other words, C<$value> will be masked before writing.

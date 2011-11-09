@@ -50,6 +50,7 @@ t/put_string.t
 t/range.t
 t/raw_size.t
 t/text.t
+t/write-0-1.t
 t/lib/BitStreamTest.pm
 examples/3d-unary.raw
 examples/bench-codes.pl
