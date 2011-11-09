@@ -287,10 +287,71 @@ L<Moose::Meta::Role> as shown above.
 
 =over 4
 
+=item B< new >
+
+Creates a new object.  By default it has no associated file and is mode RW.
+An optional hash of arguments may be supplied.  Examples:
+
+  $stream = Data::BitStream::XS->new( mode => 'ro' );
+
+The stream is opened as a read-only stream.  Attempts to open it for write will
+fail, hence all write / put methods will also fail.  This is most useful for
+opening a file for read, which will ensure no changes are made.
+
+Possible modes include C<'read' / 'r'>, C<'readonly' / 'ro'>, C<'write' / 'w'>,
+C<'writeonly' / 'wo'>, C<'append' / 'a'>, and C<'readwrite' / 'rw' / 'rdwr'>.
+
+  $stream = Data::BitStream::XS->new( file    => "c.bsc",
+                                      fheader => "HEADER $foo $bar",
+                                      mode    => 'w' );
+
+A file is associated with the stream.  Upon closing the file, going out of
+scope, or otherwise being destroyed, the stream will be written to the file,
+with the given header string written first.  While the current implementation
+writes at close time, later implementations may write as the stream is written
+to.
+
+  $stream = Data::BitStream::XS->new( file => "c.bsc",
+                                      fheaderlines => 1,
+                                      mode => 'ro' );
+
+A file is associated with the stream.  The contents of the file will be
+slurped into the stream.  The given number of header lines will be skipped
+at the start.  While the current implementation slurps the contents, later
+implementations may read from the file as the stream is read.
+
 =item B< maxbits >
 
 Returns the number of bits in a word, which is the largest allowed size of
 the C<bits> argument to C<read> and C<write>.  This will be either 32 or 64.
+
+=item B< code_is_supported >
+
+Returns a hash of information about a code if it is known, and C<undef>
+otherwise.
+
+The argument is a text name, such as C<'Gamma'>, C<'Rice(2)'>, etc.
+
+This method may be exported if requested.
+
+=item B< code_is_universal >
+
+Returns C<undef> if the code is not known, C<0> if the code is non-universal,
+and a non-zero integer if it is universal.
+
+The argument is a text name, such as C<'Gamma'>, C<'Rice(2)'>, etc.
+
+A code is universal if there exists a constant C<C> such that C<C> plus the
+length of the code is less than the optimal code length, for all values.  What
+this typically means for us in practical terms is that non-universal codes
+are fine for small numbers, but their size increases rapidly, making them
+inappropriate when large values are possible (no matter how rare).  A
+classic non-universal code is Unary coding, which takes C<k+1> bits to
+store value C<k>.  This is very good if most values are 0 or near zero.  If
+we have rare values in the tens of thousands, it's not so great.  It is
+likely to be fatal if we ever come across a value of 2 billion.
+
+This method may be exported if requested.
 
 =back
 
@@ -315,14 +376,21 @@ C<$bits> must be between C<1> and C<maxbits>.
 
 The position is advanced unless the second argument is the string 'readahead'.
 
+Attempting to read past the end of the stream is a fatal error.  However,
+readahead is allowed as it is speculative.  All positions past the end of
+the stream will always be filled with zero bits.
+
 =item B< skip($bits) >
 
 Advances the position C<$bits> bits.  Used in conjunction with C<readahead>.
 
+Attempting to skip past the end of the stream is a fatal error.
+
 =item B< read_string($bits) >
 
 Reads C<$bits> bits from the stream and returns them as a binary string, such
-as '0011011'.
+as C<'0011011'>.  Attempting to read past the end of the stream is a fatal
+error.
 
 =back
 
@@ -335,19 +403,19 @@ These methods are only valid while the stream is in writing state.
 =item B< write($bits, $value) >
 
 Writes C<$value> to the stream using C<$bits> bits.  
-C<$bits> must be between C<1> and C<maxbits>.
+C<$bits> must be between C<1> and C<maxbits>, unless C<value> is 0 or 1, in
+which case C<bits> may be larger than C<maxbits>.
 
-The length is increased by C<$bits> bits.
-
+The stream length will be increased by C<$bits> bits.
 Regardless of the contents of C<$value>, exactly C<$bits> bits will be used.
 If C<$value> has more non-zero bits than C<$bits>, the lower bits are written.
-In other words, C<$value> will be masked before writing.
+In other words, C<$value> will be effectively masked before writing.
 
 =item B< put_string(@strings) >
 
-Takes one or more binary strings, such as '1001101', '001100', etc. and
-writes them to the stream.  The number of bits used for each value is equal
-to the string length.
+Takes one or more binary strings (e.g. C<'1001101'>, C<'001100'>) and
+writes them to the stream. The number of bits used for each value is
+equal to the string length.
 
 =item B< put_stream($source_stream) >
 
@@ -464,13 +532,14 @@ If C<$count> is C<1> or not supplied, a single value will be read.
 If C<$count> is positive, that many values will be read.
 If C<$count> is negative, values are read until the end of the stream.
 
-C<get_> methods called in list context this return a list of all values read.
+C<get_> methods called in list context will return a list of all values read.
 Called in scalar context they return the last value read.
 
 C<put_> methods take one or more values as input after any optional
 parameters and write them to the stream.  All values must be non-negative
-integers that do not exceed the maximum encodable value (~0 for universal
-codes, parameter-specific for others).
+integers that do not exceed the maximum encodable value (typically ~0,
+but may be lower for some codes depending on parameter, and
+non-universal codes will be practically limited to smaller values).
 
 =over 4
 
@@ -613,6 +682,24 @@ is an array reference which can be an anonymous array, for example:
   $stream->put_startstepstop( [3,2,9], @array );
   my @array3 = $stream->get_startstepstop( [3,2,9], -1);
 
+=item B< code_get($code, [, $count]) >
+
+=item B< code_put($code, @values ) >
+
+These methods wrap up all the previous encoding and decoding methods in an
+internal dispatch table.
+C<code> is a text name of the code, such as C<'Gamma'>, C<'Fibonacci'>, etc.
+Codes with parameters are called as C<'Rice(2)'>, C<'StartStop(0-0-2-4-14)'>,
+etc.
+
+  # $use_rice and $k obtained from options, parameters, or wherever.
+  my $code = $use_rice ? "Rice($k)" : "Delta";
+  my $nvalues = scalar @values;
+  $stream->code_put($code, @values);
+  # ....
+  my @vals = $stream->code_get($code, $nvalues);
+  print "Read $nvalues values with code '$code':  ", join(',', @vals), "\n";
+
 =back
 
 =head1 SEE ALSO
@@ -644,6 +731,12 @@ is an array reference which can be an anonymous array, for example:
 =item L<Data::BitStream::Code::ExponentialGolomb>
 
 =item L<Data::BitStream::Code::StartStop>
+
+=item L<Data::BitStream::Code::Baer>
+
+=item L<Data::BitStream::Code::BoldiVigna>
+
+=item L<Data::BitStream::Code::ARice>
 
 =back
 
