@@ -8,8 +8,12 @@ codes.
 Bit streams are often used in data compression and in embedded products where
 memory is at a premium.  While this Perl implementation may not be appropriate
 for many of these applications (speed and Perl), it can be very useful for
-prototyping and experimenting with different codes.  A future implementation
-using XS for internals may resolve some performance concerns.
+prototyping and experimenting with different codes.
+
+The Data::BitStream::XS module is also available, and is a near drop-in
+replacement for this module, though it does not use Mouse/Moose.  The
+Data::BitStream module will internally use the XS module if it is found, giving
+a lot of the performance benefit without any other changes necessary.
 
 
 SYNOPSIS
@@ -21,7 +25,8 @@ SYNOPSIS
   my @values = $stream->get_gamma(-1);
 
 See the POD module documentation for examples and more information on all the
-methods included.
+methods included.  There are also examples and benchmarks in the examples
+directory in the distribution, including a functional lossless image codec.
 
 
 INSTALLATION
