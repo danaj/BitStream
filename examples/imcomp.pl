@@ -393,19 +393,19 @@ sub compress_complex {
     my $px = $pixels[$x];
     my $litlen = 0;
     my $runlen = 1;
-    my $is_run;
+    my $is_lit;
 
     # Search for a horizontal run
     $runlen++ while ($x+$runlen) < $width && $px == $pixels[$x+$runlen];
     if ($runlen >= $min_runlen_param) {
-      $is_run = 1;
+      $is_lit = 0;
       {
         my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
         push @deltas, $px - $predict;
       }
       $x += $runlen;
     } else {
-      $is_run = 0;
+      $is_lit = 1;
       my $litstart = $x;
       # The runlength break tests aren't very good, but provide a bit of a
       # balance between low entropy (smooth) and high entropy (photo) images.
@@ -431,12 +431,11 @@ sub compress_complex {
         push @deltas, $pixels[$lx] - $predict;
       }
     }
-    if ($is_run) {
-      $stream->write(1, 0); # indicate a run
-      $stream->put_gamma($runlen-$min_runlen_param);
-    } else {
-      $stream->write(1, 1); # indicate literals
+    $stream->write(1, $is_lit); # indicate if this is a run or literal
+    if ($is_lit) {
       $stream->put_gamma($litlen-1);
+    } else {
+      $stream->put_gamma($runlen-$min_runlen_param);
     }
   }
 
