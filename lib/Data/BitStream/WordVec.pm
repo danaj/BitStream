@@ -50,6 +50,7 @@ sub read {
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
+  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
 
   my $wpos = $pos >> 5;       # / 32
   my $bpos = $pos & 0x1F;     # % 32
@@ -202,7 +203,7 @@ sub get_unary {
         $onepos += 32*($wpos - $startwpos);
       }
     }
-    die "get_unary read off end of vector" if $onepos >= $len;
+    die "read off end of stream" if $onepos >= $len;
     die if $v == 0;
     # This word is non-zero.  Find the leftmost set bit.
     if (($v & 0xFFFF0000) == 0) { $onepos += 16; $v <<= 16; }

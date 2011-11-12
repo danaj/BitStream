@@ -119,8 +119,9 @@ sub skip {
   my $skip = shift;
   my $pos = $self->pos;
   my $len = $self->len;
-  die "skip off stream" if ($pos + $skip) > $len;
-  $self->_setpos($pos + $skip);
+  my $newpos = $pos + $skip;
+  die "skip off stream" if $newpos < 0 || $newpos > $len;
+  $self->_setpos($newpos);
   1;
 }
 sub exhausted {

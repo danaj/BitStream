@@ -49,11 +49,17 @@ sub get_delta {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  my $maxbits = $self->maxbits;
   while ($count-- > 0) {
     my $base = $self->get_gamma();
     last unless defined $base;
-    if ($base == $self->maxbits) {
+    if ($base == $maxbits) {
       push @vals, ~0;
+    } elsif ($base  > $maxbits) { 
+      # Skip back to the start of the invalid gamma value
+      my $glen = 1;  $glen += 2 while ( $base >= ((2 << ($glen>>1))-1) );
+      $self->skip(-$glen);
+      die "code error: Delta base $base";
     } else {
       my $val = 1 << $base;
       $val |= $self->read($base)  if $base > 0;

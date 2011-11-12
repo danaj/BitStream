@@ -27,6 +27,9 @@ requires qw(maxbits read write put_unary get_unary);
 # is assumed to be part of the base class, so no 'with Gamma' needs or should
 # be done.  It is done by the base classes if needed.
 
+# To calculate the length of gamma($n):
+#   my $gammalen = 1; $gammalen += 2 while ( $n >= ((2 << ($gammalen>>1))-1) );
+
 sub put_gamma {
   my $self = shift;
   die "write while reading" unless $self->writing;
@@ -76,7 +79,10 @@ sub get_gamma {
     elsif ($base == 1) {  push @vals, (2 | $self->read(1))-1; }  # optimization
     elsif ($base == 2) {  push @vals, (4 | $self->read(2))-1; }  # optimization
     elsif ($base == $maxbits) { push @vals, ~0; }
-    else  {
+    elsif ($base  > $maxbits) {
+      $self->skip(-($base+1)); 
+      die "code error: Gamma base $base";
+    } else  {
       push @vals, ((1 << $base) | $self->read($base))-1;
     }
   }
