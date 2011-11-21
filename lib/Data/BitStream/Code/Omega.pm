@@ -35,7 +35,15 @@ sub put_omega {
   foreach my $v (@_) {
     my $val = $v;
     die "Value must be >= 0" unless $val >= 0;
-    # Need to figure out a way to get the decoder to output 0 when we get ~0
+    if ($val == ~0) {              # write special code for maxval
+      if ($self->maxbits > 32) {
+        $self->write(13, 0x1681);  # 1 0 1 10 1 000000 1
+      } else {
+        $self->write(12, 0x0AC1);  # 1 0 1 01 1 00000 1
+      }
+      next;
+    }
+
     $val++;
 
     # Simpler code, prepending each group to a list.
@@ -85,49 +93,51 @@ sub get_omega {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  my $maxbits = $self->maxbits;
   while ($count-- > 0) {
-    my $val;
-    my $first_bit;
+    my $val = 1;
+    my $first_bit = 1;
+
+    # Simple code:
+    #  while ($first_bit = $self->read(1)) {
+    #    if ($val == $maxbits) { $val = 0; last; }
+    #    $val = (1 << $val) | $self->read($val);
+    #  }
+
     # Speedup reading the first couple sets of codes.  30-80% faster overall.
-    if (1) {  # TODO fix for array
-      my $prefix = $self->read(7, 'readahead');
-      last unless defined $prefix;
-      $val = 1;
-      $prefix <<= 1;
-      if (($prefix & 0x80) == 0) {
-        $self->skip(1);
-        push @vals, 0;
+    my $prefix = $self->read(7, 'readahead');
+    last unless defined $prefix;
+    $prefix <<= 1;
+    if (($prefix & 0x80) == 0) {
+      $self->skip(1);
+      push @vals, 0;
+      next;
+    } elsif (($prefix & 0x20) == 0) {
+      $self->skip(3);
+      push @vals, 1 + (($prefix & 0x40) != 0);
+      next;
+    } elsif ($prefix & 0x40) {                # read 4 more bits
+      $val = ($prefix >> 2) & 0x0F;
+      $self->skip(7);
+      if (($prefix & 0x02) == 0) {
+        push @vals, $val-1;
         next;
-      } elsif (($prefix & 0x20) == 0) {
-        $self->skip(3);
-        push @vals, 1 + (($prefix & 0x40) != 0);
-        next;
-      } elsif ($prefix & 0x40) {                # read 4 more bits
-        $val = ($prefix >> 2) & 0x0F;
-        $self->skip(7);
-        if (($prefix & 0x02) == 0) {
-          push @vals, $val-1;
-          next;
-        }
-      } else {                             # read 3 more bits
-        $val = ($prefix >> 3) & 0x07;
-        $self->skip(6);
-        if (($prefix & 0x04) == 0) {
-          push @vals, $val-1;
-          next;
-        }
       }
-      do {
-         $val = (1 << $val) | $self->read($val);
-      } while ($first_bit = $self->read(1));
-    } else {
-      $val = 1;
-      while ($first_bit = $self->read(1)) {
-        $val = (1 << $val) | $self->read($val);
+    } else {                             # read 3 more bits
+      $val = ($prefix >> 3) & 0x07;
+      $self->skip(6);
+      if (($prefix & 0x04) == 0) {
+        push @vals, $val-1;
+        next;
       }
     }
+    do {
+      if ($val == $maxbits) { push @vals, ~0; next; }
+      $val = (1 << $val) | $self->read($val);
+    } while ($first_bit = $self->read(1));
+
     last unless defined $first_bit;
-    push @vals, ($val == 0) ? ~0 : $val-1;
+    push @vals, $val-1;
   }
   wantarray ? @vals : $vals[-1];
 }
