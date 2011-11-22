@@ -54,7 +54,7 @@ sub find_code {
     my $rinfo;
     {
       my $pname = 'Data::BitStream::Code::' . $module;
-      no strict 'refs';
+      no strict 'refs';  ## no critic
       $rinfo = ${$pname}{'CODEINFO'};
       next unless defined $rinfo;
       next unless $rinfo =~ s/^\*//;
