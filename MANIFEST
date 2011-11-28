@@ -40,6 +40,7 @@ t/05-coding-09.t
 t/05-coding-10.t
 t/05-coding-11.t
 t/70-failures.t
+t/90-release-perlcritic.t
 t/delta_to_fib.t
 t/exporting.t
 t/interleave.t
