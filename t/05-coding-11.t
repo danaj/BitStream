@@ -28,7 +28,7 @@ sub test_encoding {
     if (is_universal($encoding)) {
       my $stream = new_stream($type);
       $maxbits = $stream->maxbits;
-      $maxpat = ~0;
+      $maxpat = ($maxbits == 32)  ?  0xFFFFFFFF  :  ~0;
     }
 
     my @data;

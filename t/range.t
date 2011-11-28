@@ -8,6 +8,11 @@ use lib qw(t/lib);
 use BitStreamTest;
 
 my $maxval = ~0;
+# Force maxval to 0xFFFFFFFF if the stream is 32-bit.
+{
+  my $stream = new_stream('String');
+  $maxval = 0xFFFFFFFF if $stream->maxbits == 32;
+}
 my @maxdata = (0, 1, 2, 33, 65, 129,
                ($maxval >> 1) - 2,
                ($maxval >> 1) - 1,
