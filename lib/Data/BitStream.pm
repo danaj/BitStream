@@ -627,7 +627,7 @@ large outliers.  For example to use Fibonacci coding for the base:
 
   $stream->put_golomb( sub {shift->put_fib(@_)}, $m, $value);
 
-  $value = $stream->put_golomb( sub {shift->get_fib(@_)}, $m);
+  $value = $stream->get_golomb( sub {shift->get_fib(@_)}, $m);
 
 =item B< get_rice($k [, $count]) >
 
@@ -646,7 +646,7 @@ large outliers.  For example to use Omega coding for the base:
 
   $stream->put_rice( sub {shift->put_omega(@_)}, $k, $value);
 
-  $value = $stream->put_rice( sub {shift->get_omega(@_)}, $k);
+  $value = $stream->get_rice( sub {shift->get_omega(@_)}, $k);
 
 =item B< get_gammagolomb($m [, $count]) >
 
