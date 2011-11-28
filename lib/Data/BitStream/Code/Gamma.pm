@@ -33,6 +33,7 @@ requires qw(maxbits read write put_unary get_unary);
 sub put_gamma {
   my $self = shift;
   die "write while reading" unless $self->writing;
+  my $maxval = $self->maxval;
 
   foreach my $val (@_) {
     die "value must be >= 0" unless $val >= 0;
@@ -47,7 +48,7 @@ sub put_gamma {
     if    ($val == 0)  { $self->write(1, 1); }
     elsif ($val == 1)  { $self->write(3, 2); }  # optimization
     elsif ($val == 2)  { $self->write(3, 3); }  # optimization
-    elsif ($val == ~0) { $self->put_unary($self->maxbits); }
+    elsif ($val == $maxval) { $self->put_unary($self->maxbits); }
     else {
       my $base = 0;
       { my $v = $val+1; $base++ while ($v >>= 1); }
@@ -78,7 +79,7 @@ sub get_gamma {
     if    ($base == 0) {  push @vals, 0; }
     elsif ($base == 1) {  push @vals, (2 | $self->read(1))-1; }  # optimization
     elsif ($base == 2) {  push @vals, (4 | $self->read(2))-1; }  # optimization
-    elsif ($base == $maxbits) { push @vals, ~0; }
+    elsif ($base == $maxbits) { push @vals, $self->maxval; }
     elsif ($base  > $maxbits) {
       $self->skip(-($base+1)); 
       die "code error: Gamma base $base";

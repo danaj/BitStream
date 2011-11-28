@@ -196,6 +196,7 @@ sub put_gamma {
 
   my $rstr = $self->_strref;
   my $len = $self->len;
+  my $maxval = $self->maxval;
 
   foreach my $val (@_) {
     die "value must be >= 0" unless $val >= 0;
@@ -203,7 +204,7 @@ sub put_gamma {
     if    ($val == 0)  { $vstr = '1'; }
     elsif ($val == 1)  { $vstr = '010'; }
     elsif ($val == 2)  { $vstr = '011'; }
-    elsif ($val == ~0) { $vstr = '0' x $self->maxbits . '1'; }
+    elsif ($val == $maxval) { $vstr = '0' x $self->maxbits . '1'; }
     else {
       my $base = 0;
       { my $v = $val+1; $base++ while ($v >>= 1); }
@@ -243,7 +244,7 @@ sub get_gamma {
     my $base = $onepos - $pos;
     $pos = $onepos + 1;
     if    ($base == 0) {  push @vals, 0; }
-    elsif ($base == $self->maxbits) { push @vals, ~0; }
+    elsif ($base == $self->maxbits) { push @vals, $self->maxval; }
     else  {
       my $vstr = substr($$rstr, $pos, $base);
       $pos += $base;

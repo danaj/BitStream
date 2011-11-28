@@ -60,11 +60,12 @@ sub put_boldivigna {
     ($maxhk, $hparams) = _hparam_map($k, $self->maxbits);
     $hp_cache[$k] = [$maxhk, $hparams];
   }
+  my $maxval = $self->maxval;
 
   foreach my $v (@_) {
     die "Value must be >= 0" unless $v >= 0;
 
-    if ($v == ~0) {
+    if ($v == $maxval) {
       $self->put_unary( ($maxhk/$k)+1 );
       next;
     }
@@ -113,7 +114,7 @@ sub get_boldivigna {
     my $h = $self->get_unary();
     last unless defined $h;
     if ($h > ($maxhk/$k)) {
-      push @vals, ~0;
+      push @vals, $self->maxval;
       next;
     }
     my ($s, $threshold) = @{$hparams->[$h]};

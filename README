@@ -1,4 +1,4 @@
-Data-BitStream version 0.04
+Data-BitStream version 0.05
 ===========================
 
 A Mouse/Moose class providing read/write access to bit streams.  This includes
@@ -51,8 +51,11 @@ Here are instructions and benchmarks for using Moo:
   https://gist.github.com/1259851
 
 I have tested this using perl versions 5.8.0, 5.8.9, 5.10.1, 5.12.4, 5.14.1,
-and 5.15.2.  Perl 5.6.2 works on 64-bit systems, and 32-bit systems not using
-64-bit integers.
+and 5.15.2.
+
+It also works with Perl 5.6.2, with a caveat.  On 32-bit O/S, 64-bit Perl can
+have broken arithmetic (two unequal 64-bit numbers will compare as equal).  We
+force maxbits to 32 if it looks like it won't work with 64.
 
 
 COPYRIGHT AND LICENCE

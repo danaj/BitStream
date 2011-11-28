@@ -26,11 +26,13 @@ requires qw(maxbits read write put_gamma get_gamma);
 
 sub put_delta {
   my $self = shift;
+  my $maxbits = $self->maxbits;
+  my $maxval = $self->maxval;
 
   foreach my $val (@_) {
     die "Value must be >= 0" unless $val >= 0;
-    if ($val == ~0) {
-      $self->put_gamma($self->maxbits);
+    if ($val == $maxval) {
+      $self->put_gamma($maxbits);
     } else {
       my $base = 0;
       { my $v = $val+1; $base++ while ($v >>= 1); }
@@ -54,7 +56,7 @@ sub get_delta {
     my $base = $self->get_gamma();
     last unless defined $base;
     if ($base == $maxbits) {
-      push @vals, ~0;
+      push @vals, $self->maxval;
     } elsif ($base  > $maxbits) { 
       # Skip back to the start of the invalid gamma value
       my $glen = 1;  $glen += 2 while ( $base >= ((2 << ($glen>>1))-1) );

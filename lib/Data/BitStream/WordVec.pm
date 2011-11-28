@@ -225,6 +225,7 @@ sub put_gamma {
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
+  my $maxval = $self->maxval;
 
   foreach my $val (@_) {
     die "value must be >= 0" unless $val >= 0;
@@ -236,7 +237,7 @@ sub put_gamma {
       vec($$rvec, $wpos, 32) |= (1 << ((32-$bpos) - 1));
       $len++;
       next;
-    } elsif ($val == ~0) {         # Encode ~0 as unary maxbits
+    } elsif ($val == $maxval) {    # Encode ~0 as unary maxbits
       $len += $self->maxbits;
       $wpos = $len >> 5;      # / 32
       $bpos = $len & 0x1F;    # % 32

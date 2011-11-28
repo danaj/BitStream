@@ -114,6 +114,11 @@ BEGIN {
     die "Config says 64-bit Perl, but int is $notzero" if ((~0 >> 16) >> 16) != 0xFFFFFFFF;
   }
 
+  # 64-bit seems broken in Perl 5.6.2 on the 32-bit system I have (and at
+  # least one CPAN Tester shows the same).  Try:
+  #     perl -e 'die if 18446744073709550593 == ~0'
+  # That inexplicably dies on 64-bit 5.6.2.  It works fine on 5.8.0 and later.
+  #
   # Direct method, pre-5.8.0 Perls.
   #   $_host_word_size = 32 if $] < 5.008;
   # Detect the symptoms (should allow 5.6.2 on 64-bit O/S to work fine):
@@ -122,11 +127,9 @@ BEGIN {
   }
 
   $_all_ones = ($_host_word_size == 32) ? 0xFFFFFFFF : ~0;
-  # Unfortunately this needs changes in a lot of the Code modules to pass the
-  # range tests.  They're hard-coding ~0 a lot for maxval.
 }
 use constant maxbits => $_host_word_size;
-use constant allones => $_all_ones;
+use constant maxval  => $_all_ones;
 
 sub rewind {
   my $self = shift;
@@ -316,12 +319,12 @@ sub put_unary1 {
   foreach my $val (@_) {
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
     if ($val < maxbits) {
-      $self->write($val+1, allones << 1);
+      $self->write($val+1, maxval << 1);
     } else {
       my $nbits  = $val % maxbits;
       my $nwords = ($val-$nbits) / maxbits;
-      $self->write(maxbits, allones)  for (1 .. $nwords);
-      $self->write($nbits+1, allones << 1);
+      $self->write(maxbits, maxval)  for (1 .. $nwords);
+      $self->write($nbits+1, maxval << 1);
     }
   }
   1;
@@ -352,7 +355,7 @@ sub get_unary1 {            # You ought to override this.
 
     my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
-    while ($word == allones) {
+    while ($word == maxval) {
       die "read off end of stream" unless $self->skip(maxbits);
       $val += maxbits;
       $word = $self->read(maxbits, 'readahead');

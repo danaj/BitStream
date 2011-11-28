@@ -31,12 +31,14 @@ sub _base_of { my $d = shift; my $base = 0; $base++ while ($d >>= 1); $base; }
 
 sub put_omega {
   my $self = shift;
+  my $maxval = $self->maxval;
+  my $maxbits = $self->maxbits;
 
   foreach my $v (@_) {
     my $val = $v;
     die "Value must be >= 0" unless $val >= 0;
-    if ($val == ~0) {              # write special code for maxval
-      if ($self->maxbits > 32) {
+    if ($val == $maxval) {         # write special code for maxval
+      if ($maxbits > 32) {
         $self->write(13, 0x1681);  # 1 0 1 10 1 000000 1
       } else {
         $self->write(12, 0x0AC1);  # 1 0 1 01 1 00000 1
@@ -132,7 +134,7 @@ sub get_omega {
       }
     }
     do {
-      if ($val == $maxbits) { push @vals, ~0; next; }
+      if ($val == $maxbits) { push @vals, $self->maxval; next; }
       $val = (1 << $val) | $self->read($val);
     } while ($first_bit = $self->read(1));
 
