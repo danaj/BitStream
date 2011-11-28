@@ -47,9 +47,12 @@ This module requires these other modules and libraries:
   Mouse
 
 It works identically with Moose instead of Mouse, but it's almost 2x slower.
+Here are instructions and benchmarks for using Moo:
+  https://gist.github.com/1259851
 
-I have tested this using perl versions 5.8.9, 5.10.1, 5.12.4, 5.14.1,
-and 5.15.2.
+I have tested this using perl versions 5.8.0, 5.8.9, 5.10.1, 5.12.4, 5.14.1,
+and 5.15.2.  Perl 5.6.2 works on 64-bit systems, and 32-bit systems not using
+64-bit integers.
 
 
 COPYRIGHT AND LICENCE
