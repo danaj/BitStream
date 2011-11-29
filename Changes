@@ -1,8 +1,9 @@
 Revision history for Perl extension Data::BitStream.
 
-0.04
+0.04   Nov 9 2011
 	- Fix late regression in one of the tests, unpack "W" -> "C".
 	- Minor test and documentation changes.
+	- Make most error strings consistent.
 
 0.03   Mon Nov  7 06:00:00 2011
 	- More work on unit tests.
