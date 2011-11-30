@@ -18,19 +18,23 @@ done_testing();
 
 
 sub test_encoding {
-  my $encoding = shift;
+  my $tencoding = shift;
 
   plan tests => 2 * scalar @implementations;
 
   foreach my $type (@implementations) {
-    my $nfibs = 22;
-    if (is_universal($encoding)) {
-      $nfibs = 47;
-      {
-        my $mstream = new_stream($type);
-        $nfibs = 80 if $mstream->maxbits >= 64;
-      }
-    }
+    my $encoding = $tencoding;
+    my $tmp_stream = new_stream($type);
+    my $stream_maxbits = $tmp_stream->maxbits;
+
+    my $nfibs = (!is_universal($encoding))  ?  22
+                                            :  ($stream_maxbits < 64)  ?  47
+                                                                       :  80;
+    # Perl 5.6.x 64-bit support is problematic.
+    $nfibs = 73 if ($] < 5.008) && ($nfibs > 73);
+
+    # Just in case the stream maxbits is different
+    $encoding =~ s/BinWord\(\d+\)/BinWord($stream_maxbits)/i;
 
     my @fibs = (0,1,1);
     my ($v2, $v1) = ( $fibs[-2], $fibs[-1] );
