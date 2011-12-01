@@ -49,13 +49,15 @@ This module requires these other modules and libraries:
 It works identically with Moose instead of Mouse, but it's almost 2x slower.
 Here are instructions and benchmarks for using Moo:
   https://gist.github.com/1259851
+It shows how Mouse and Moose are completely interchangable, but Moo requires
+incompatible changes to the module source.
 
-I have tested this using perl versions 5.8.0, 5.8.9, 5.10.1, 5.12.4, 5.14.1,
-and 5.15.2.
+I have tested this using perl versions 5.6.2, 5.8.0, 5.8.9, 5.10.1, 5.12.4,
+5.14.1, and 5.15.2.
 
-It also works with Perl 5.6.2, with a caveat.  On 32-bit O/S, 64-bit Perl can
-have broken arithmetic (two unequal 64-bit numbers will compare as equal).  We
-force maxbits to 32 if it looks like it won't work with 64.
+It works with Perl 5.6.2, with a caveat.  On 32-bit O/S, 64-bit Perl can have
+broken arithmetic (two unequal 64-bit numbers will compare as equal).  We force
+maxbits to 32 if it looks like it won't work with 64.
 
 
 COPYRIGHT AND LICENCE
