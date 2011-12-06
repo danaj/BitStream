@@ -9,6 +9,19 @@ use List::Util qw(sum);
 use POSIX;
 use Imager;
 
+our $have_c;
+BEGIN {
+  eval {
+    require Inline::Files;
+    require Inline;  Inline->import(qw(C));
+    $have_c = 1;
+    1;
+  } or do {
+    warn "Inline.pm not installed, using Pure Perl for decor/predict\n";
+    $have_c = 0;
+  }
+}
+
 #
 # Simple example lossless image compressor.
 #
@@ -17,7 +30,7 @@ use Imager;
 # vehicle for experimenting with different ideas.
 #
 # Examples:
-# 
+#
 #  Compress art.ppm -> c.bsc using defaults
 #
 #      perl imcomp.pl  -c  -i art.ppm  -o c.bsc
@@ -64,6 +77,13 @@ my %predictor_info = (
   'DJMED' => \&predict_djmed,
   'GED2'  => \&predict_ged2,
 );
+
+if ($have_c) {
+  $predictor_info{'MED'} = \&c_predict_med;
+  $transform_info{'YCOCG'} = [ 'YCoCg',
+                               \&c_decorrelate_YCoCg,
+                               \&c_correlate_YCoCg ];
+}
 
 my $min_runlen_param = 3;   # Parameter for RLE in compression
 
@@ -135,20 +155,20 @@ if (defined $opts{'c'}) {
 #
 ###############################################################################
 sub predict_1d {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
 
   return 0 if $x == 0 && $y == 0;
-  return $colors->[$y-1]->[$x  ]->[$p] if $x == 0;
-  return $colors->[$y  ]->[$x-1]->[$p];
+  return $colors->[$y-1][$x  ][$p] if $x == 0;
+  return $colors->[$y  ][$x-1][$p];
 }
 
 sub predict_darc {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
   return predict_1d(@_) if $x == 0 || $y == 0;
 
-  my $w  = $colors->[$y  ]->[$x-1]->[$p];
-  my $n  = $colors->[$y-1]->[$x  ]->[$p];
-  my $nw = $colors->[$y-1]->[$x-1]->[$p];
+  my $w  = $colors->[$y  ][$x-1][$p];
+  my $n  = $colors->[$y-1][$x  ][$p];
+  my $nw = $colors->[$y-1][$x-1][$p];
 
   my $gv = abs($w - $nw);
   my $gh = abs($n - $nw);
@@ -159,12 +179,12 @@ sub predict_darc {
 
 # MED (Median Edge Detection) from LOCO-I / JPEG-LS
 sub predict_med {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
   return predict_1d(@_) if $x == 0 || $y == 0;
 
-  my $w  = $colors->[$y  ]->[$x-1]->[$p];
-  my $n  = $colors->[$y-1]->[$x  ]->[$p];
-  my $nw = $colors->[$y-1]->[$x-1]->[$p];
+  my $w  = $colors->[$y  ][$x-1][$p];
+  my $n  = $colors->[$y-1][$x  ][$p];
+  my $nw = $colors->[$y-1][$x-1][$p];
 
   my ($minwn, $maxwn) = ($n > $w)  ?  ($w, $n)  :  ($n, $w);
   return $minwn if $nw >= $maxwn;
@@ -174,16 +194,16 @@ sub predict_med {
 
 # GAP (Gradient Adjusted Predictor) from CALIC
 sub predict_gap {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
   return predict_med(@_) if $y <= 1 || $x <= 1 || $x == $width-1;
 
-  my $w  = $colors->[$y  ]->[$x-1]->[$p];
-  my $n  = $colors->[$y-1]->[$x  ]->[$p];
-  my $nw = $colors->[$y-1]->[$x-1]->[$p];
-  my $ww = $colors->[$y  ]->[$x-2]->[$p];
-  my $ne = $colors->[$y-1]->[$x+1]->[$p];
-  my $nn = $colors->[$y-2]->[$x  ]->[$p];
-  my $nne= $colors->[$y-2]->[$x+1]->[$p];
+  my $w  = $colors->[$y  ][$x-1][$p];
+  my $n  = $colors->[$y-1][$x  ][$p];
+  my $nw = $colors->[$y-1][$x-1][$p];
+  my $ww = $colors->[$y  ][$x-2][$p];
+  my $ne = $colors->[$y-1][$x+1][$p];
+  my $nn = $colors->[$y-2][$x  ][$p];
+  my $nne= $colors->[$y-2][$x+1][$p];
 
   my $dh = abs($w - $ww) + abs($n - $nw) + abs($ne - $n);
   my $dv = abs($w - $nw) + abs($n - $nn) + abs($ne - $nne);
@@ -199,14 +219,14 @@ sub predict_gap {
 
 # DJMED (Median of three linear predictors)
 sub predict_djmed {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
   return predict_med(@_) if $y <= 1 || $x <= 1;
 
-  my $w  = $colors->[$y  ]->[$x-1]->[$p];
-  my $n  = $colors->[$y-1]->[$x  ]->[$p];
-  my $nw = $colors->[$y-1]->[$x-1]->[$p];
-  my $ww = $colors->[$y  ]->[$x-2]->[$p];
-  my $nn = $colors->[$y-2]->[$x  ]->[$p];
+  my $w  = $colors->[$y  ][$x-1][$p];
+  my $n  = $colors->[$y-1][$x  ][$p];
+  my $nw = $colors->[$y-1][$x-1][$p];
+  my $ww = $colors->[$y  ][$x-2][$p];
+  my $nn = $colors->[$y-2][$x  ][$p];
 
   my $T = 32;
   my $gv = abs($nw - $w) + abs($nn - $n);
@@ -224,14 +244,14 @@ sub predict_djmed {
 }
 
 sub predict_ged2 {
-  my ($x, $width, $y, $p, $colors) = @_;
+  my ($colors, $y, $x, $p, $width) = @_;
   return predict_med(@_) if $y <= 1 || $x <= 1;
 
-  my $w  = $colors->[$y  ]->[$x-1]->[$p];
-  my $n  = $colors->[$y-1]->[$x  ]->[$p];
-  my $nw = $colors->[$y-1]->[$x-1]->[$p];
-  my $ww = $colors->[$y  ]->[$x-2]->[$p];
-  my $nn = $colors->[$y-2]->[$x  ]->[$p];
+  my $w  = $colors->[$y  ][$x-1][$p];
+  my $n  = $colors->[$y-1][$x  ][$p];
+  my $nw = $colors->[$y-1][$x-1][$p];
+  my $ww = $colors->[$y  ][$x-2][$p];
+  my $nn = $colors->[$y-2][$x  ][$p];
 
   my $T = 8;
   my $gv = abs($nw - $w) + abs($nn - $n);
@@ -301,6 +321,17 @@ sub correlate_YCoCg {
         [ ($r,$g,$b) ];
       } @{$rcolors};
 }
+sub c_decorrelate_YCoCg {
+  my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
+  map { [RGB_to_YCoCg(@{$_})] } @{$rcolors};
+}
+sub c_correlate_YCoCg {
+  my $rcolors = shift;
+  die unless scalar @{$rcolors->[0]} == 3;
+  map { [YCoCg_to_RGB(@{$_})] } @{$rcolors};
+}
+
 
 ###############################################################################
 #
@@ -353,12 +384,12 @@ sub correlate_YCoCg {
 sub compress_simple {
   my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
 
-  my @pixels = map { $_->[$p] } @{$rcolors->[$y]};
+  my @pixels  = map { $_->[$p] } @{$rcolors->[$y  ]};
   my @deltas;
 
   foreach my $x (0 .. $width-1) {
     # 1) Predict this pixel.
-    my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+    my $predict = $predict_sub->($rcolors, $y, $x, $p, $width);
     # 2) encode the delta mapped to an unsigned number
     push @deltas, $pixels[$x] - $predict;
     #my $udelta = ($delta >= 0)  ?  2*$delta  :  -2*$delta-1;
@@ -376,7 +407,7 @@ sub decompress_simple {
   die "short code read" unless scalar @deltas == $width;
 
   foreach my $x (0 .. $width-1) {
-    my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+    my $predict = $predict_sub->($rcolors, $y, $x, $p, $width);
     my $pixel = $predict + $deltas[$x];
     $rcolors->[$y][$x][$p] = $pixel;
   }
@@ -385,7 +416,7 @@ sub decompress_simple {
 sub compress_complex {
   my ($stream, $code, $rcolors, $y, $width, $p, $predict_sub) = @_;
 
-  my @pixels = map { $_->[$p] } @{$rcolors->[$y]};
+  my @pixels  = map { $_->[$p] } @{$rcolors->[$y  ]};
   my @deltas;
 
   my $x = 0;
@@ -400,7 +431,7 @@ sub compress_complex {
     if ($runlen >= $min_runlen_param) {
       $is_lit = 0;
       {
-        my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+        my $predict = $predict_sub->($rcolors, $y, $x, $p, $width);
         push @deltas, $px - $predict;
       }
       $x += $runlen;
@@ -418,7 +449,7 @@ sub compress_complex {
         $breaklen = $min_runlen_param;
         { my $nlits = ($x-$litstart) >> 3; $breaklen++ while ($nlits >>= 1); }
         $runlen = 3;
-        $runlen++ while ($x+$runlen) < $width && 
+        $runlen++ while ($x+$runlen) < $width &&
                         $pixels[$x] == $pixels[$x+$runlen] &&
                         $runlen < $breaklen;
         # If we found enough, exit
@@ -427,7 +458,7 @@ sub compress_complex {
       $x = $width if ($x+$breaklen) >= $width;
       $litlen = $x - $litstart;
       foreach my $lx ($litstart .. $x-1) {
-        my $predict = $predict_sub->($lx, $width, $y, $p, $rcolors);
+        my $predict = $predict_sub->($rcolors, $y, $lx, $p, $width);
         push @deltas, $pixels[$lx] - $predict;
       }
     }
@@ -480,13 +511,13 @@ sub decompress_complex {
   while (scalar @interp > 0) {
     my ($is_lit, $length) = @{shift @interp};
     if (!$is_lit) {
-      my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+      my $predict = $predict_sub->($rcolors, $y, $x, $p, $width);
       my $pixel = $predict + shift @deltas;
       $rcolors->[$y][$x++][$p] = $pixel  for (1 .. $length);
     } else {
       my $last_x = $x + $length;
       while ($x < $last_x) {
-        my $predict = $predict_sub->($x, $width, $y, $p, $rcolors);
+        my $predict = $predict_sub->($rcolors, $y, $x, $p, $width);
         my $pixel = $predict + shift @deltas;
         $rcolors->[$y][$x][$p] = $pixel;
         $x++;
@@ -535,12 +566,22 @@ sub compress_file {
 
     {
       # Put a scanline worth of colors into the @colors array
-      my @samples = $image->getsamples( y => $y, type => '8bit' );
-      die "short image read" unless scalar @samples == ($width*$planes);
-      foreach my $x (0 .. $width-1) {
-        foreach my $p (0 .. $planes-1) {
-          $colors[$y]->[$x]->[$p] = $samples[$planes*$x + $p];
-        }
+      if ($planes == 1) {
+        my @samples = $image->getsamples( y => $y,
+                                          channels => [0],
+                                          type => '8bit' );
+        @{$colors[$y]} = map { [$_] } @samples;
+      } else {
+        my @s0 = $image->getsamples( y => $y,
+                                     channels => [0],
+                                     type => '8bit' );
+        my @s1 = $image->getsamples( y => $y,
+                                     channels => [1],
+                                     type => '8bit' );
+        my @s2 = $image->getsamples( y => $y,
+                                     channels => [2],
+                                     type => '8bit' );
+        @{$colors[$y]} = map { [$s0[$_], $s1[$_], $s2[$_]] } (0 .. $width-1);
       }
     }
 
@@ -636,4 +677,82 @@ sub decompress_file {
 
   # Write the final image
   $image->write( file => $outfile )  or die $image->errstr;
+}
+
+__END__
+
+__C__
+
+/*
+ * The default decorrelation and predictors in C.
+ * They're only a few lines each, and this makes a big difference in speed
+ * because they're called once per pixel (sometimes less for the predictor).
+ * On my machine the compression/decompression runs about 1.8x faster.
+ */
+
+void RGB_to_YCoCg(int r, int g, int b) {
+  int t, Y, Co, Cg;
+  Inline_Stack_Vars;
+
+  Co = r - b;
+  t = b + (((Co < 0) ? Co-1 : Co)/2);
+  Cg = g - t;
+  Y = t + (((Cg < 0) ? Cg-1 : Cg)/2);
+
+  Inline_Stack_Reset;
+  Inline_Stack_Push(sv_2mortal(newSViv( Y  )));
+  Inline_Stack_Push(sv_2mortal(newSViv( Co )));
+  Inline_Stack_Push(sv_2mortal(newSViv( Cg )));
+  Inline_Stack_Done;
+}
+
+void YCoCg_to_RGB(int Y, int Co, int Cg) {
+  int t, r, g, b;
+  Inline_Stack_Vars;
+
+  t = Y - (((Cg < 0) ? Cg-1 : Cg)/2);
+  g = Cg + t;
+  b = t - (((Co < 0) ? Co-1 : Co)/2);
+  r = b + Co;
+
+  Inline_Stack_Reset;
+  Inline_Stack_Push(sv_2mortal(newSViv( r )));
+  Inline_Stack_Push(sv_2mortal(newSViv( g )));
+  Inline_Stack_Push(sv_2mortal(newSViv( b )));
+  Inline_Stack_Done;
+}
+
+static int getcolor(SV* rcolors, int y, int x, int p) {
+  if ( (!rcolors) || (!SvROK(rcolors)) || (SvTYPE(SvRV(rcolors)) != SVt_PVAV) )
+    croak("getcolor: rcolors isn't an array");
+  AV* colors = (AV*)SvRV(rcolors);
+  SV** yc = av_fetch(colors, y, 0);
+  if ( (!yc) || (!SvROK(*yc)) || (SvTYPE(SvRV(*yc)) != SVt_PVAV) )
+    croak("getcolor: rcolors->[y] isn't an array");
+  AV* xcolors = (AV*)SvRV(*yc);
+  SV** xc = av_fetch(xcolors, x, 0);
+  if ( (!xc) || (!SvROK(*xc)) || (SvTYPE(SvRV(*xc)) != SVt_PVAV) )
+    croak("getcolor: rcolors->[y][x] isn't an array");
+  AV* pcolors = (AV*)SvRV(*xc);
+  SV** pc = av_fetch(pcolors, p, 0);
+  if (pc == 0)
+    croak("getcolor: rcolors->[y][x][p] isn't an value");
+  int value = SvIV(*pc);
+  return value;
+}
+
+int c_predict_med(SV* rcolors, int y, int x, int p, int width) {
+  if ((x == 0) && (y == 0))  return 0;
+  if (x == 0)                return getcolor(rcolors, y-1, x, p);
+  if (y == 0)                return getcolor(rcolors, y, x-1, p);
+
+  int w  = getcolor(rcolors, y  , x-1, p);
+  int n  = getcolor(rcolors, y-1, x  , p);
+  int nw = getcolor(rcolors, y-1, x-1, p);
+
+  int minwn = (n > w) ? w : n;
+  int maxwn = (n > w) ? n : w;
+  if (nw >= maxwn)  return minwn;
+  if (nw <= minwn)  return maxwn;
+  return n + w - nw;
 }
