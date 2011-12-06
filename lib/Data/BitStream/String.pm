@@ -310,7 +310,31 @@ sub from_string {
   $self->rewind_for_read;
 }
 
-# Using default to_raw, from_raw
+sub to_raw {
+  my $self = shift;
+  $self->write_close;
+  return pack("B*", $self->_str);
+}
+sub put_raw {
+  my $self = shift;
+  die "write while reading" unless $self->writing;
+  my $vec  = shift;
+  my $bits = shift || int((length($vec)+7)/8);
+
+  my $str = unpack("B$bits", $vec);
+  my $strlen = length($str);
+  die if $strlen > $bits;
+  if ($strlen < $bits) {
+    $str .= "0" x ($bits - $strlen);
+  }
+
+  my $rstr = $self->_strref;
+  $$rstr .= $str;
+  $self->_setlen( $self->len + $bits );
+  1;
+}
+
+# Using default from_raw
 # Using default to_store, from_store
 
 # An example.  We have a custom put_string so this isn't much faster.
@@ -458,11 +482,11 @@ implementation.
 
 =head1 AUTHORS
 
-Dana Jacobsen <dana@acm.org>
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
