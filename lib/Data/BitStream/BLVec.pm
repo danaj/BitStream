@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::BLVec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::BLVec::VERSION   = '0.01';
+  $Data::BitStream::BLVec::VERSION   = '0.02';
 }
 
 use Mouse;
@@ -26,7 +26,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::ARice',
      'Data::BitStream::Code::StartStop';
 
-use Data::BitStream::XS;
+use Data::BitStream::XS 0.04;
 
 has '_vec' => (is => 'rw',
                isa => 'Data::BitStream::XS',
@@ -179,7 +179,13 @@ sub to_raw {
   my $vref = $self->_vec;
   return $vref->to_raw;
 }
-
+sub put_raw {
+  my $self = shift;
+  my $vref = $self->_vec;
+  $vref->put_raw(@_);
+  $self->_setlen( $vref->len );
+  1;
+}
 sub from_raw {
   my $self = $_[0];
   # data comes in 2nd argument
