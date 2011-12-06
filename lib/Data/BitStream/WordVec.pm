@@ -524,11 +524,11 @@ The following roles are included.
 
 =head1 AUTHORS
 
-Dana Jacobsen <dana@acm.org>
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
