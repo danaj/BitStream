@@ -480,11 +480,13 @@ sub to_raw {               # You ought to override this.
   }
   $vec;
 }
-sub from_raw {             # You ought to override this.
+sub put_raw {              # You ought to override this.
   my $self = shift;
+  die "write while reading" unless $self->writing;
+
   my $vec  = shift;
   my $bits = shift || int((length($vec)+7)/8);
-  $self->erase_for_write;
+
   my $vpos = 0;
   while ($bits >= 32) {
     $self->write(32, unpack("N", substr($vec, $vpos, 4)));
@@ -499,6 +501,14 @@ sub from_raw {             # You ought to override this.
     $word >>= (32-$bits);                      # shift data to lower bits
     $self->write($bits, $word);                # write data to stream
   }
+  1;
+}
+sub from_raw {
+  my $self = shift;
+  my $vec  = shift;
+  my $bits = shift || int((length($vec)+7)/8);
+  $self->erase_for_write;
+  $self->put_raw($vec, $bits);
   $self->rewind_for_read;
 }
 
@@ -523,10 +533,14 @@ sub put_stream {
   my $source = shift;
   return 0 unless defined $source && $source->can('to_string');
 
-  # in an implementation, you could check if ref $source eq __PACKAGE__
-  # and do something special.
+  # In an implementation, you could check if ref $source eq __PACKAGE__
+  # and do something special.  BLVec / XS does this.
 
+  # This is reasonably fast for most implementations.
   $self->put_string($source->to_string);
+  # In theory this could be faster.  Since all the implementations have custom
+  # string code, and none have custom raw code, it's currently slower.
+  # $self->put_raw($source->to_raw, $source->len);
   1;
 }
 
@@ -740,13 +754,28 @@ Takes one or more binary strings, such as '1001101', '001100', etc. and
 writes them to the stream.  The number of bits used for each value is equal
 to the string length.
 
+=item B< put_raw($packed, [, $bits]) >
+Writes the packed big-endian vector C<$packed> which has C<$bits> bits of data.
+If C<$bits> is not present, then C<length($packed)> will be used as the
+byte-length.  It is recommended that you include C<$bits>.
+
 =item B< put_stream($source_stream) >
 
 Writes the contents of C<$source_stream> to the stream.  This is a helper
 method that might be more efficient than doing it in one of the many other
-possible ways.  The default implementation uses:
+possible ways.  Some functionally equivalent methods:
 
-  $self->put_string( $source_stream->to_string );
+  $self->put_string( $source_stream->to_string );  # The default for put_stream
+
+  $self->put_raw( $source_stream->to_raw, $source_stream->len );
+
+  my $bits = $source_stream->len;
+  $source_stream->rewind_for_read;
+  while ($bits > 0) {
+    my $wbits = ($bits >= 32) ? 32 : $bits;
+    $self->write($wbits, $source_stream->read($wbits));
+    $bits -= $wbits;
+  }
 
 =back
 
@@ -833,11 +862,11 @@ A helper function that performs C<write_close> followed by C<rewind>.
 
 =head1 AUTHORS
 
-Dana Jacobsen <dana@acm.org>
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
