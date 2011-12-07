@@ -3,6 +3,9 @@ Revision history for Perl extension Data::BitStream.
 0.05   --- -- ---
 	- Make a couple 64-bit tests work properly with the 'xs' module on
 	  LLP64 systems.
+        - Add put_raw, from_raw uses it.
+        - String has custom to_raw and put_raw
+	- Inline C for decorrelator / predictor in image compression example
 
 0.04    9 Nov 2011
 	- Fix late regression in one of the tests, unpack "W" -> "C".

@@ -11,7 +11,7 @@ use lib "$FindBin::Bin/../t/lib";
 use BitStreamTest;
 use POSIX;
 
-my $type = 'blvec';
+my $type = 'wordvec';
 
 # Time with small, big, and mixed numbers.
 
@@ -28,6 +28,7 @@ my @encodings = qw|
   bvzeta(2)
   fib
   deltagol(11)
+  arice(0)
   omegagol(11)
   ss(3-1-3)
   gg(6)
