@@ -119,6 +119,8 @@ no Mouse::Role;
 
 =pod
 
+=encoding utf8
+
 =head1 NAME
 
 Data::BitStream::Code::Levenstein - A Role implementing Levenstein codes
@@ -185,11 +187,11 @@ These methods are required for the role.
 
 =head1 AUTHORS
 
-Dana Jacobsen <dana@acm.org>
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
