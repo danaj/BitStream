@@ -30,6 +30,7 @@ sub put_baer {
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   foreach my $v (@_) {
+    die "value must be >= 0" unless defined $v and $v >= 0;
     if ($v < $mk) {
       $self->put_unary1($v);
       next;

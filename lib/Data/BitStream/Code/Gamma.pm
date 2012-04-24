@@ -36,7 +36,7 @@ sub put_gamma {
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     # Simple:
     #
     #   my $base = 0;

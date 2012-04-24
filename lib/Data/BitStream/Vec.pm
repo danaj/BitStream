@@ -48,6 +48,7 @@ sub read {
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
+  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
 
   my $val = 0;
   my $rvec = $self->_vecref;
@@ -92,6 +93,7 @@ sub put_unary {
   my $len = $self->len;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     vec($$rvec, $len + $val+1 - 1, 1) = 1;
     $len += $val+1;
   }

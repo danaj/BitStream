@@ -43,7 +43,7 @@ sub put_levenstein {
   my $self = shift;
 
   foreach my $v (@_) {
-    die "Value must be >= 0" unless $v >= 0;
+    die "value must be >= 0" unless defined $v and $v >= 0;
     if ($v == 0) { $self->write(1, 0); next; }
 
     # Simpler code:
@@ -97,13 +97,29 @@ sub get_levenstein {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  my $maxbits = $self->maxbits;
+  my $len = $self->len;
   while ($count-- > 0) {
+    my $startpos = $self->pos;
+    my $pos = $startpos;
+
     my $C = $self->get_unary1;
     last unless defined $C;
+    $pos += $C+1;
+
     my $val = 0;
     if ($C > 0) {
       my $N = 1;
       for (1 .. $C-1) {
+        if ($N > $maxbits) {
+          $self->skip(-($pos-$startpos));  # Restore position
+          die "code error: Levenstein overflow";
+        }
+        if ( ($pos+$N) > $len ) {
+          $self->skip(-($pos-$startpos));  # Restore position
+          die "read off end of stream";
+        }
+        $pos += $N;
         $N = (1 << $N) | $self->read($N);
       }
       $val = $N;

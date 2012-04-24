@@ -25,11 +25,11 @@ sub put_rice {
     $k = shift;
   }
 
-  die "k must be >= 0" unless $k >= 0;
+  die "invalid parameters: rice $k" unless $k >= 0;
   return( (defined $sub) ? $sub->($self, @_) : $self->put_unary(@_) ) if $k==0;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     my $q = $val >> $k;
     my $r = $val - ($q << $k);
     (defined $sub)  ?  $sub->($self, $q)  :  $self->put_unary($q);
@@ -46,7 +46,7 @@ sub get_rice {
     $k = shift;
   }
 
-  die "k must be >= 0" unless $k >= 0;
+  die "invalid parameters: rice $k" unless $k >= 0;
   return( (defined $sub) ? $sub->($self, @_) : $self->get_unary(@_) ) if $k==0;
 
   my $count = shift;

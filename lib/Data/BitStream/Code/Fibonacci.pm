@@ -68,7 +68,7 @@ sub put_fib {
   my @fibs = @{$fibs_order[2]};  # arguably we should just use the reference
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
 
     if ( ($val < $fib_code_cache_size) && (defined $fib_code_cache[$val]) ) {
       $self->write( @{$fib_code_cache[$val]} );
@@ -182,7 +182,7 @@ sub put_fibm {
   my @fibm = @{$fibs_order[$m]};
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
 
     if    ($val == 0) {  $self->put_string(      '1' x $m); next; }
     elsif ($val == 1) {  $self->put_string('0' . '1' x $m); next; }
@@ -301,7 +301,7 @@ sub put_fib_c2 {
   my $self = shift;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     $self->put_string(_encode_fib_c2($val+1));
   }
   1;

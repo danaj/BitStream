@@ -110,7 +110,8 @@ sub put_startstop {
   my @pmap = _make_prefix_map(shift, $self->maxbits);
   my $global_maxval = $pmap[-1]->[3];
   foreach my $val (@_) {
-    die "value out of range 0-$global_maxval" if ($val < 0) || ($val > $global_maxval);
+    die "value must be >= 0" unless defined $val and $val >= 0;
+    die "value out of range 0-$global_maxval" if $val > $global_maxval;
     my $prefix = 0;
     $prefix++ while ($val > $pmap[$prefix]->[3]);
     my($prefix_bits,$prefix_cmp,$minval,$maxval,$bits) = @{$pmap[$prefix]};

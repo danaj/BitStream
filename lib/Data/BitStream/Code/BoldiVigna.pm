@@ -63,7 +63,7 @@ sub put_boldivigna {
   my $maxval = $self->maxval;
 
   foreach my $v (@_) {
-    die "Value must be >= 0" unless $v >= 0;
+    die "value must be >= 0" unless defined $v and $v >= 0;
 
     if ($v == $maxval) {
       $self->put_unary( ($maxhk/$k)+1 );

@@ -137,6 +137,7 @@ sub put_unary {
   my $rvec = $self->_vecref;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     # We're writing $val 0's, so just skip them
     $len += $val;
     my $wpos = $len >> 5;      # / 32
@@ -228,7 +229,7 @@ sub put_gamma {
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
 
     my $wpos = $len >> 5;      # / 32
     my $bpos = $len & 0x1F;    # % 32
@@ -357,7 +358,7 @@ sub to_string {
   my $str = unpack("B$len", $$rvec);
   # unpack sometimes drops 0 bits at the end, so we need to check and add them.
   my $strlen = length($str);
-  die if $strlen > $len;
+  die "unexpected death" if $strlen > $len;
   if ($strlen < $len) {
     $str .= "0" x ($len - $strlen);
   }

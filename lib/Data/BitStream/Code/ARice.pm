@@ -70,7 +70,7 @@ sub put_arice {
   my @q_list;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     if ($k == 0) {
       push @q_list, $val;
       $k++ if $val >= QHIGH;   # _adjust_k shortcut

@@ -49,7 +49,7 @@ sub put_golomb {
   my $threshold = (1 << $b) - $m;            # will be 0 if m is a power of 2
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
 
     # Obvious but incorrect for large values (you'll get negative r values).
     #    my $q = int($val / $m);

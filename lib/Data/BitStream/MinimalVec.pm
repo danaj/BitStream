@@ -39,6 +39,7 @@ sub read {
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
+  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
 
   my $val = 0;
   my $rvec = $self->_vecref;

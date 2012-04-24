@@ -5,9 +5,9 @@
 
 - tests for invalid behavior
 - tests for consistent die return strings
-  - read unary off end of stream
-  - put negative numbers should give "value must be >= 0" for all put_*
-  - write with undefined value
+  x read unary off end of stream
+  x put negative numbers should give "value must be >= 0" for all put_*
+  x write with undefined value
   - put_* with undefined parameters or undef value
   - get_* with undefined parameters
   - put_string with invalid string (e.g. '0012')
@@ -25,11 +25,13 @@
 - tie to a file to avoid holding everything in memory.
   Either File::Map or PerlIO :mmap or Sys::Mmap
 
+- test all open modes, especially write-only
+
+- MinimalVec read off end of stream:  get_unary and get_unary1 
+
 CODES:
 
 - m > 2 Fibonacci codes
-
-- Omega ~0
 
 - Ternary Comma
 

@@ -166,7 +166,7 @@ sub read_open {
   $self->write_close if $self->writing;
   my $file = $self->file;
   if (defined $file) {
-    open(my $fp, "<", $file) or die "Cannot open read file $file: $!\n";
+    open(my $fp, "<", $file) or die "Cannot open file '$file' for read: $!\n";
     my $headerlines = $self->fheaderlines;
     if (defined $headerlines) {
       # Read in their header
@@ -210,7 +210,7 @@ sub write_close {
 
     my $file = $self->file;
     if (defined $file) {
-      open(my $fp, ">", $file) or die "Cannot open file $file: $!\n";
+      open(my $fp, ">", $file) or die "Cannot open file $file for write: $!\n";
       my $header = $self->fheader;
       print $fp $header, "\n" if defined $header && length($header) > 0;
       binmode $fp;
@@ -249,6 +249,7 @@ sub put_unary {
   my $self = shift;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
 
     # Since the write routine is allowed to take any number of bits when
@@ -295,7 +296,7 @@ sub get_unary {            # You ought to override this.
     my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
     while ($word == 0) {
-      die "read off stream" unless $self->skip(maxbits);
+      die "read off end of stream" unless $self->skip(maxbits);
       $val += maxbits;
       $word = $self->read(maxbits, 'readahead');
     }
@@ -303,6 +304,7 @@ sub get_unary {            # You ought to override this.
       $val++;
       $word <<= 1;
     }
+    die "read off end of stream" if ($pos+$val+1) >= $len;
     my $nbits = $val % maxbits;
     $self->skip($nbits + 1);
 
@@ -317,6 +319,7 @@ sub put_unary1 {
   my $self = shift;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
     if ($val < maxbits) {
       $self->write($val+1, maxval << 1);
@@ -364,6 +367,7 @@ sub get_unary1 {            # You ought to override this.
       $val++;
       $word <<= 1;
     }
+    die "read off end of stream" if ($pos+$val+1) >= $len;
     my $nbits = $val % maxbits;
     $self->skip($nbits + 1);
 
@@ -380,6 +384,7 @@ sub put_binword {
   die "invalid parameters" if ($bits <= 0) || ($bits > maxbits);
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     $self->write($bits, $val);
   }
   1;

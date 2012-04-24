@@ -48,8 +48,8 @@ sub read {
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
+  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
 
-  # What about reading past the end in this read?
   my $rstr = $self->_strref;
   my $str = substr($$rstr, $pos, $bits);
   { # This is for readahead.  We should use a write-close method instead.
@@ -118,6 +118,7 @@ sub put_unary {
   my $len = $self->len;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     $$rstr .= '0' x ($val) . '1';
     $len += $val+1;
   }
@@ -141,7 +142,7 @@ sub get_unary {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '1', $pos );
-    die "read off stream" if $onepos == -1;
+    die "read off end of stream" if $onepos == -1;
     my $val = $onepos - $pos;
     $pos = $onepos + 1;
     push @vals, $val;
@@ -158,6 +159,7 @@ sub put_unary1 {
   my $len = $self->len;
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     $$rstr .= '1' x ($val) . '0';
     $len += $val+1;
   }
@@ -181,7 +183,7 @@ sub get_unary1 {
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '0', $pos );
-    die "read off stream" if $onepos == -1;
+    die "read off end of stream" if $onepos == -1;
     my $val = $onepos - $pos;
     $pos = $onepos + 1;
     push @vals, $val;
@@ -199,7 +201,7 @@ sub put_gamma {
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     my $vstr;
     if    ($val == 0)  { $vstr = '1'; }
     elsif ($val == 1)  { $vstr = '010'; }
@@ -235,16 +237,18 @@ sub get_gamma {
   my $pos = $self->pos;
   my $len = $self->len;
   my $rstr = $self->_strref;
+  my $maxbits = $self->maxbits;
 
   my @vals;
   while ($count-- > 0) {
     last if $pos >= $len;
     my $onepos = index( $$rstr, '1', $pos );
-    die "read off stream" if $onepos == -1;
+    die "read off end of stream" if $onepos == -1;
     my $base = $onepos - $pos;
     $pos = $onepos + 1;
     if    ($base == 0) {  push @vals, 0; }
-    elsif ($base == $self->maxbits) { push @vals, $self->maxval; }
+    elsif ($base == $maxbits) { push @vals, $self->maxval; }
+    elsif ($base  > $maxbits) { die "code error: Gamma base $base"; }
     else  {
       my $vstr = substr($$rstr, $pos, $base);
       $pos += $base;

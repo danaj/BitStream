@@ -36,7 +36,7 @@ sub put_omega {
 
   foreach my $v (@_) {
     my $val = $v;
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     if ($val == $maxval) {         # write special code for maxval
       if ($maxbits > 32) {
         $self->write(13, 0x1681);  # 1 0 1 10 1 000000 1
@@ -96,9 +96,12 @@ sub get_omega {
 
   my @vals;
   my $maxbits = $self->maxbits;
+  my $len = $self->len;
   while ($count-- > 0) {
     my $val = 1;
     my $first_bit = 1;
+    my $startpos = $self->pos;
+    my $pos = $startpos;
 
     # Simple code:
     #  while ($first_bit = $self->read(1)) {
@@ -121,6 +124,7 @@ sub get_omega {
     } elsif ($prefix & 0x40) {                # read 4 more bits
       $val = ($prefix >> 2) & 0x0F;
       $self->skip(7);
+      $pos += 7;
       if (($prefix & 0x02) == 0) {
         push @vals, $val-1;
         next;
@@ -128,17 +132,29 @@ sub get_omega {
     } else {                             # read 3 more bits
       $val = ($prefix >> 3) & 0x07;
       $self->skip(6);
+      $pos += 6;
       if (($prefix & 0x04) == 0) {
         push @vals, $val-1;
         next;
       }
     }
     do {
-      if ($val == $maxbits) { push @vals, $self->maxval; next; }
+      if ($val == $maxbits) {
+        push @vals, $self->maxval;
+        next;
+      } elsif ($val > $maxbits) {
+        $self->skip(-($pos-$startpos));  # Restore position
+        die "code error: Omega overflow";
+      }
+      if ( ($pos+$val+1) > $len ) {
+        $self->skip(-($pos-$startpos));  # Restore position
+        die "read off end of stream";
+      }
+      $pos += $val+1;
       $val = (1 << $val) | $self->read($val);
     } while ($first_bit = $self->read(1));
 
-    last unless defined $first_bit;
+    die "unexpected death" unless defined $first_bit;
     push @vals, $val-1;
   }
   wantarray ? @vals : $vals[-1];

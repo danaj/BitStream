@@ -119,7 +119,6 @@ sub code_is_universal {
 #
 # A 32-bit HP 9000/785 gave similar results though ~15x slower overall.
 
-use Data::BitStream::WordVec;
 use Mouse;
 if (eval {require Data::BitStream::BLVec}) {
   extends 'Data::BitStream::BLVec';

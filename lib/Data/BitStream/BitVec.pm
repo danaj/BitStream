@@ -54,6 +54,7 @@ sub read {
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
+  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
   my $vref = $self->_vec;
 
   my $val;
@@ -125,6 +126,7 @@ sub put_unary {
   my $vsize = $vref->Size();
 
   foreach my $val (@_) {
+    die "value must be >= 0" unless defined $val and $val >= 0;
     my $bits = $val+1;
     if (($len+$bits) > $vsize) {
       $vsize = int( ($len+$bits+2048) * 1.15 );

@@ -30,7 +30,7 @@ sub put_delta {
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "Value must be >= 0" unless $val >= 0;
+    die "value must be >= 0" unless defined $val and $val >= 0;
     if ($val == $maxval) {
       $self->put_gamma($maxbits);
     } else {
