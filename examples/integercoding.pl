@@ -17,8 +17,7 @@ our @EXPORT = qw(encode_unary decode_unary
                  encode_fib   decode_fib    );
 our @EXPORT_OK = qw();
 
-# If called as a script, parse the args and input.
-&ic_script unless caller;
+__PACKAGE__->run unless caller;
 
 
 # Helper functions
@@ -157,6 +156,7 @@ sub decode_fib {
 
 
 
+##########    When run as a script, use these methods    ##########
 
 sub die_usage {
   my $usage =<<EOU;
@@ -169,7 +169,7 @@ EOU
 }
 
 use Getopt::Long;
-sub ic_script {
+sub run {
   my %subs = ( unary => [ \&encode_unary, \&decode_unary ],
                gamma => [ \&encode_gamma, \&decode_gamma ],
                delta => [ \&encode_delta, \&decode_delta ],
