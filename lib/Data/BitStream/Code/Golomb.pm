@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Golomb::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Golomb::VERSION = '0.02';
+  $Data::BitStream::Code::Golomb::VERSION = '0.03';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -41,7 +41,7 @@ sub put_golomb {
     $sub = $m;
     $m = shift;
   }
-  die "m must be >= 1" unless $m >= 1;
+  $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 
   return( (defined $sub) ? $sub->($self, @_) : $self->put_unary(@_) ) if $m==1;
   my $b = 1;
@@ -49,7 +49,7 @@ sub put_golomb {
   my $threshold = (1 << $b) - $m;            # will be 0 if m is a power of 2
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
 
     # Obvious but incorrect for large values (you'll get negative r values).
     #    my $q = int($val / $m);
@@ -57,7 +57,8 @@ sub put_golomb {
     # Correct way:
     my $r = $val % $m;
     my $q = ($val - $r) / $m;
-    die unless ($r >= 0) && ($r < $m) && ($q==int($q)) && (($q*$m+$r) == $val);
+    # Make sure modulo works as intended
+    $self->error_code('assert') unless ($r >= 0) && ($r < $m) && ($q==int($q)) && (($q*$m+$r) == $val);
 
     (defined $sub)  ?  $sub->($self, $q)  :  $self->put_unary($q);
 
@@ -78,7 +79,7 @@ sub get_golomb {
     $sub = $m;
     $m = shift;
   }
-  die "m must be >= 1" unless $m >= 1;
+  $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 
   return( (defined $sub) ? $sub->($self, @_) : $self->get_unary(@_) ) if $m==1;
   my $b = 1;
@@ -91,21 +92,34 @@ sub get_golomb {
   elsif ($count == 0)     { return;      }
 
   my @vals;
-  while ($count-- > 0) {
-    my $q = (defined $sub)  ?  $sub->($self)  :  $self->get_unary();
-    last unless defined $q;
-    my $val = $q * $m;
-    if ($threshold == 0) {
-      $val += $self->read($b);
-    } else {
-      my $first = $self->read($b-1);
-      if ($first >= $threshold) {
-        $first = ($first << 1) + $self->read(1) - $threshold;
-      }
-      $val += $first;
+  $self->code_pos_start('Golomb');
+  if ($threshold == 0) {
+    while ($count-- > 0) {
+      $self->code_pos_set;
+      my $q = (defined $sub)  ?  $sub->($self)  :  $self->get_unary();
+      last unless defined $q;
+      my $val = $q * $m;
+      my $remainder = $self->read($b);
+      $self->error_off_stream unless defined $remainder;
+      push @vals, $val+$remainder;
     }
-    push @vals, $val;
+  } else {
+    while ($count-- > 0) {
+      $self->code_pos_set;
+      my $q = (defined $sub)  ?  $sub->($self)  :  $self->get_unary();
+      last unless defined $q;
+      my $val = $q * $m;
+      my $remainder = $self->read($b-1);
+      $self->error_off_stream unless defined $remainder;
+      if ($remainder >= $threshold) {
+        my $extra = $self->read(1);
+        $self->error_off_stream unless defined $extra;
+        $remainder = ($remainder << 1) + $extra - $threshold;
+      }
+      push @vals, $val+$remainder;
+    }
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;
@@ -121,7 +135,7 @@ Data::BitStream::Code::Golomb - A Role implementing Golomb codes
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 DESCRIPTION
 
@@ -229,7 +243,7 @@ Dana Jacobsen <dana@acm.org>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011-2012 by Dana Jacobsen <dana@acm.org>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

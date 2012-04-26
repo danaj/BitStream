@@ -49,7 +49,7 @@ sub _hparam_map {
 sub put_boldivigna {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k < 1 || $k > 15;
+  $self->error_code('param', "k must be in range 1-15") if $k < 1 || $k > 15;
 
   return $self->put_gamma(@_) if $k == 1;
 
@@ -63,7 +63,7 @@ sub put_boldivigna {
   my $maxval = $self->maxval;
 
   foreach my $v (@_) {
-    die "value must be >= 0" unless defined $v and $v >= 0;
+    $self->error_code('zeroval') unless defined $v and $v >= 0;
 
     if ($v == $maxval) {
       $self->put_unary( ($maxhk/$k)+1 );
@@ -92,7 +92,7 @@ sub put_boldivigna {
 sub get_boldivigna {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k < 1 || $k > 15;
+  $self->error_code('param', "k must be in range 1-15") if $k < 1 || $k > 15;
 
   return $self->get_gamma(@_) if $k == 1;
 
@@ -110,7 +110,9 @@ sub get_boldivigna {
   }
 
   my @vals;
+  $self->code_pos_start('BoldiVigna');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $h = $self->get_unary();
     last unless defined $h;
     if ($h > ($maxhk/$k)) {
@@ -120,12 +122,16 @@ sub get_boldivigna {
     my ($s, $threshold) = @{$hparams->[$h]};
 
     my $first = $self->read($s-1);
+    $self->error_off_stream unless defined $first;
     if ($first >= $threshold) {
-      $first = ($first << 1) + $self->read(1) - $threshold;
+      my $extra = $self->read(1);
+      $self->error_off_stream unless defined $extra;
+      $first = ($first << 1) + $extra - $threshold;
     }
     my $val = (1 << $h*$k) + $first - 1;
     push @vals, $val;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

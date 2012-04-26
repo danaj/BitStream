@@ -42,7 +42,7 @@ sub put_evenrodeh {
   my $self = shift;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     if ($val <= 3) {
       $self->write(3, $val);
     } else {
@@ -68,38 +68,26 @@ sub get_evenrodeh {
 
   my @vals;
   my $maxbits = $self->maxbits;
-  my $len = $self->len;
+  $self->code_pos_start('EvenRodeh');
   while ($count-- > 0) {
-    my $startpos = $self->pos;
-    my $pos = $startpos;
+    $self->code_pos_set;
 
     my $val = $self->read(3);
     last unless defined $val;
-    $pos += 3;
 
     if ($val > 3) {
       my $first_bit;
-      if ( ($pos+1) > $len) {
-        $self->skip(-($pos-$startpos));  # Restore position
-        die "read off end of stream";
-      }
-      $pos += 1;
       while ($first_bit = $self->read(1)) {
-        if ( ($val-1) > $maxbits ) {
-          $self->skip(-($pos-$startpos));  # Restore position
-          die "code error: EvenRodeh overflow";
-        }
-        if ( ($pos+($val-1)+1) > $len ) {
-          $self->skip(-($pos-$startpos));  # Restore position
-          die "read off end of stream";
-        }
-        $pos += ($val-1) + 1;
-        $val = (1 << ($val-1)) | $self->read($val-1);
+        $self->error_code('overflow') if ($val-1) > $maxbits;
+        my $next = $self->read($val-1);
+        $self->error_off_stream unless defined $next;
+        $val = (1 << ($val-1)) | $next;
       }
+      $self->error_off_stream unless defined $first_bit;
     }
     push @vals, $val;
   }
-
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

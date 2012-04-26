@@ -32,11 +32,11 @@ requires qw(maxbits read write put_unary get_unary);
 
 sub put_gamma {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     # Simple:
     #
     #   my $base = 0;
@@ -65,7 +65,7 @@ sub put_gamma {
 
 sub get_gamma {
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -73,20 +73,21 @@ sub get_gamma {
 
   my $maxbits = $self->maxbits;
   my @vals;
+  $self->code_pos_start('Gamma');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $base = $self->get_unary();
     last unless defined $base;
-    if    ($base == 0) {  push @vals, 0; }
-    elsif ($base == 1) {  push @vals, (2 | $self->read(1))-1; }  # optimization
-    elsif ($base == 2) {  push @vals, (4 | $self->read(2))-1; }  # optimization
+    if    ($base == 0)        {  push @vals, 0; }
     elsif ($base == $maxbits) { push @vals, $self->maxval; }
-    elsif ($base  > $maxbits) {
-      $self->skip(-($base+1)); 
-      die "code error: Gamma base $base";
-    } else  {
-      push @vals, ((1 << $base) | $self->read($base))-1;
+    elsif ($base  > $maxbits) { $self->error_code('base', $base); }
+    else {
+      my $remainder = $self->read($base);
+      $self->error_off_stream unless defined $remainder;
+      push @vals, ((1 << $base) | $remainder)-1;
     }
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

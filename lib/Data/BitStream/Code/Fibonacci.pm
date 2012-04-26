@@ -45,7 +45,7 @@ requires qw(write put_string get_unary read);
 my @fibs_order;
 sub _calc_fibs_for_order_m {
   my $m = shift;
-  die unless $m >= 2;
+  die "Internal Fibonacci error" unless $m >= 2;
   my @fibm = (0) x ($m-1);
   push @fibm, 1, 1, 2;
   my $v1 = $fibm[-1];
@@ -64,11 +64,13 @@ my @fib_code_cache;
 
 sub put_fib {
   my $self = shift;
+  $self->error_stream_mode('write') unless $self->writing;
+
   _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
   my @fibs = @{$fibs_order[2]};  # arguably we should just use the reference
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
 
     if ( ($val < $fib_code_cache_size) && (defined $fib_code_cache[$val]) ) {
       $self->write( @{$fib_code_cache[$val]} );
@@ -145,6 +147,7 @@ sub put_fib {
 
 sub get_fib {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
 
   _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
   my @fibs = @{$fibs_order[2]};  # arguably we should just use the reference
@@ -155,19 +158,23 @@ sub get_fib {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  $self->code_pos_start('Fibonacci');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $code = $self->get_unary;
     last unless defined $code;
     # Start with -1 here instead of subtracting it later.  No overflow issues.
     my $val = -1;
     my $b = -1;
     do {
-      die "Read off end of stream" unless defined $code;
       $b += $code+1;
       $val += $fibs[$b];
-    } while ($code = $self->get_unary);
+      $code = $self->get_unary;
+      $self->error_off_stream unless defined $code;
+    } while ($code != 0);
     push @vals, $val;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
@@ -176,13 +183,14 @@ sub get_fib {
 
 sub put_fibm {
   my $self = shift;
+  $self->error_stream_mode('write') unless $self->writing;
   my $m = shift;
-  die "invalid parameters" unless $m >= 2 && $m <= 10;
+  $self->error_code('param', 'm must be in range 2-10') unless $m >= 2 && $m <= 10;
   _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
   my @fibm = @{$fibs_order[$m]};
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
 
     if    ($val == 0) {  $self->put_string(      '1' x $m); next; }
     elsif ($val == 1) {  $self->put_string('0' . '1' x $m); next; }
@@ -209,8 +217,9 @@ sub put_fibm {
 
 sub get_fibm {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $m = shift;
-  die "invalid parameters" unless $m >= 2 && $m <= 10;
+  $self->error_code('param', 'm must be in range 2-10') unless $m >= 2 && $m <= 10;
   _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
   my @fibm = @{$fibs_order[$m]};
   my $count = shift;
@@ -221,19 +230,24 @@ sub get_fibm {
   my $term = ~(~0 << $m);
 
   my @vals;
+  $self->code_pos_start("Fibonacci($m)");
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $code = $self->readahead($m);
     last unless defined $code;
     my $val = 1;
     my $s = 0;
     while ($code != $term) {
-      $val += $fibm[$s]  if $self->read(1);
+      my $next = $self->read(1);
+      $self->error_off_stream unless defined $next;
+      $val += $fibm[$s]  if $next;
       $s++;
       $code = $self->readahead($m);
     }
     $self->skip($m);
     push @vals, $val-1;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
@@ -249,7 +263,7 @@ sub get_fibm {
 
 sub _encode_fib_c1 {
   my $d = shift;
-  die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
+  return unless $d >= 1 and $d <= ~0;
   _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
   my @fibs = @{$fibs_order[2]};
   my $s =  ($d < $fibs[20])  ?  0  :  ($d < $fibs[40])  ?  21  :  41;
@@ -268,7 +282,7 @@ sub _encode_fib_c1 {
 
 sub _decode_fib_c1 {
   my $str = shift;
-  die "Invalid Fibonacci C1 code" unless $str =~ /^[01]*11$/;
+  return unless $str =~ /^[01]*11$/;
   _calc_fibs_for_order_m(2) unless defined $fibs_order[2];
   my @fibs = @{$fibs_order[2]};
   my $val = 0;
@@ -280,9 +294,10 @@ sub _decode_fib_c1 {
 
 sub _encode_fib_c2 {
   my $d = shift;
-  die "Value must be between 1 and ~0" unless $d >= 1 and $d <= ~0;
+  return unless $d >= 1 and $d <= ~0;
   return '1' if $d == 1;
   my $str = _encode_fib_c1($d-1);
+  return unless defined $str;
   substr($str, -1, 1) = '';
   substr($str, 0, 0) = '10';
   $str;
@@ -291,30 +306,36 @@ sub _encode_fib_c2 {
 sub _decode_fib_c2 {
   my $str = shift;
   return 1 if $str eq '1';
-  die "Invalid Fibonacci C2 code" unless $str =~ /^10[01]*1$/;
+  return unless $str =~ /^10[01]*1$/;
   $str =~ s/^10//;
-  my $val = _decode_fib_c1($str . '1') + 1;
-  $val;
+  my $val = _decode_fib_c1($str . '1');
+  return unless defined $val;
+  $val+1;
 }
 
 sub put_fib_c2 {
   my $self = shift;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
-    $self->put_string(_encode_fib_c2($val+1));
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
+    my $c2_string = _encode_fib_c2($val+1);
+    $self->error_code('value', $val) unless defined $c2_string;
+    $self->put_string($c2_string);
   }
   1;
 }
 sub get_fib_c2 {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  $self->code_pos_start('Fibonacci C2');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $str = '';
     if (0) {
       my $look = $self->read(8, 'readahead');
@@ -334,11 +355,15 @@ sub get_fib_c2 {
     my $b2 = $self->read(1, 'readahead');
     while ( (defined $b2) && ($b2 != 1) ) {
       my $skip = $self->get_unary;
+      $self->error_off_stream unless defined $skip;
       $str .= '0' x $skip . '1';
       $b2 = $self->read(1, 'readahead');
     }
-    push @vals, _decode_fib_c2($str)-1;
+    my $val = _decode_fib_c2($str);
+    $self->error_code('string', "Not a Fibonacci C2 code") unless defined $val;
+    push @vals, $val-1;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

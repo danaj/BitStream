@@ -31,12 +31,13 @@ sub _base_of { my $d = shift; my $base = 0; $base++ while ($d >>= 1); $base; }
 
 sub put_omega {
   my $self = shift;
+  $self->error_stream_mode('write') unless $self->writing;
   my $maxval = $self->maxval;
   my $maxbits = $self->maxbits;
 
   foreach my $v (@_) {
     my $val = $v;
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     if ($val == $maxval) {         # write special code for maxval
       if ($maxbits > 32) {
         $self->write(13, 0x1681);  # 1 0 1 10 1 000000 1
@@ -89,6 +90,7 @@ sub put_omega {
 
 sub get_omega {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -96,12 +98,11 @@ sub get_omega {
 
   my @vals;
   my $maxbits = $self->maxbits;
-  my $len = $self->len;
+  $self->code_pos_start('Omega');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $val = 1;
     my $first_bit = 1;
-    my $startpos = $self->pos;
-    my $pos = $startpos;
 
     # Simple code:
     #  while ($first_bit = $self->read(1)) {
@@ -124,7 +125,6 @@ sub get_omega {
     } elsif ($prefix & 0x40) {                # read 4 more bits
       $val = ($prefix >> 2) & 0x0F;
       $self->skip(7);
-      $pos += 7;
       if (($prefix & 0x02) == 0) {
         push @vals, $val-1;
         next;
@@ -132,7 +132,6 @@ sub get_omega {
     } else {                             # read 3 more bits
       $val = ($prefix >> 3) & 0x07;
       $self->skip(6);
-      $pos += 6;
       if (($prefix & 0x04) == 0) {
         push @vals, $val-1;
         next;
@@ -142,21 +141,16 @@ sub get_omega {
       if ($val == $maxbits) {
         push @vals, $self->maxval;
         next;
-      } elsif ($val > $maxbits) {
-        $self->skip(-($pos-$startpos));  # Restore position
-        die "code error: Omega overflow";
       }
-      if ( ($pos+$val+1) > $len ) {
-        $self->skip(-($pos-$startpos));  # Restore position
-        die "read off end of stream";
-      }
-      $pos += $val+1;
-      $val = (1 << $val) | $self->read($val);
+      $self->error_code('overflow') if $val > $maxbits;
+      my $next = $self->read($val);
+      $self->error_off_stream unless defined $next;
+      $val = (1 << $val) | $next;
     } while ($first_bit = $self->read(1));
-
-    die "unexpected death" unless defined $first_bit;
+    $self->error_off_stream unless defined $first_bit;
     push @vals, $val-1;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

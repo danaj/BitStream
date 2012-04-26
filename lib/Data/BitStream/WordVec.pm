@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::WordVec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::WordVec::VERSION = '0.02';
+  $Data::BitStream::WordVec::VERSION = '0.03';
 }
 
 use Mouse;
@@ -42,15 +42,16 @@ after 'erase' => sub {
 
 sub read {
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $bits = shift;
-  die "invalid bits: $bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  $self->error_code('param', 'bits must be in range 1-' . $self->maxbits)
+         unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
-  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
+  $self->error_off_stream if !$peek && ($pos+$bits) > $len;
 
   my $wpos = $pos >> 5;       # / 32
   my $bpos = $pos & 0x1F;     # % 32
@@ -82,11 +83,11 @@ sub read {
 }
 sub write {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
   my $bits = shift;
-  die "invalid bits: $bits" unless defined $bits && $bits > 0;
+  $self->error_code('param', 'bits must be > 0') unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "undefined value" unless defined $val;
+  $self->error_code('zeroval') unless defined $val and $val >= 0;
 
   my $len  = $self->len;
   my $new_len = $len + $bits;
@@ -98,7 +99,7 @@ sub write {
 
   if ($val == 1) { $len += $bits-1; $bits = 1; }
 
-  die "invalid bits: $bits" if $bits > $self->maxbits;
+  $self->error_code('param', 'bits must be <= ' . $self->maxbits) if $bits > $self->maxbits;
 
   my $wpos = $len >> 5;       # / 32
   my $bpos = $len & 0x1F;     # % 32
@@ -131,13 +132,13 @@ sub write {
 
 sub put_unary {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     # We're writing $val 0's, so just skip them
     $len += $val;
     my $wpos = $len >> 5;      # / 32
@@ -154,7 +155,7 @@ sub put_unary {
 
 sub get_unary {
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -197,15 +198,19 @@ sub get_unary {
         #  24us:  substr($$rvec,$wpos*4,32) eq "\x00 .... \x00"
         #  12us:  tr with 128 then 32
 
-        $wpos += 32 while ( (($wpos+30) < $lastwpos) && (substr($$rvec,$wpos*4,128) =~ tr/\000/\000/ == 128) );
-        $wpos += 8 while ( (($wpos+6) < $lastwpos) && (substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32) );
+        {
+          # Reading off the end of a stream will cause these warnings.
+          no warnings qw(uninitialized substr);
+          $wpos += 32 while ( (($wpos+30) < $lastwpos) && (substr($$rvec,$wpos*4,128) =~ tr/\000/\000/ == 128) );
+          $wpos += 8 while ( (($wpos+6) < $lastwpos) && (substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32) );
+        }
         $wpos++ while ($wpos <= $lastwpos && vec($$rvec, $wpos, 32) == 0);
         $v = vec($$rvec, $wpos, 32);
         $onepos += 32*($wpos - $startwpos);
       }
     }
-    die "read off end of stream" if $onepos >= $len;
-    die if $v == 0;
+    $self->error_off_stream() if $onepos >= $len;
+    $self->error_code('assert', "v must be 0") if $v == 0;
     # This word is non-zero.  Find the leftmost set bit.
     if (($v & 0xFFFF0000) == 0) { $onepos += 16; $v <<= 16; }
     if (($v & 0xFF000000) == 0) { $onepos +=  8; $v <<=  8; }
@@ -222,14 +227,14 @@ sub get_unary {
 # This is pretty important for speed
 sub put_gamma {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
 
     my $wpos = $len >> 5;      # / 32
     my $bpos = $len & 0x1F;    # % 32
@@ -318,14 +323,14 @@ sub put_gamma {
 
 sub put_string {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   my $len = $self->len;
   my $rvec = $self->_vecref;
 
   foreach my $str (@_) {
     next unless defined $str;
-    die "invalid string" if $str =~ tr/01//c;
+    $self->error_code('string') if $str =~ tr/01//c;
     my $bits = length($str);
     next unless $bits > 0;
 
@@ -358,7 +363,7 @@ sub to_string {
   my $str = unpack("B$len", $$rvec);
   # unpack sometimes drops 0 bits at the end, so we need to check and add them.
   my $strlen = length($str);
-  die "unexpected death" if $strlen > $len;
+  $self->error_code('assert', "string length") if $strlen > $len;
   if ($strlen < $len) {
     $str .= "0" x ($len - $strlen);
   }
@@ -367,7 +372,7 @@ sub to_string {
 sub from_string {
   my $self = shift;
   my $str  = shift;
-  die "invalid string" if $str =~ tr/01//c;
+  $self->error_code('string') if $str =~ tr/01//c;
   my $bits = shift || length($str);
   $self->write_open;
 
@@ -529,7 +534,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

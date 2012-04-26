@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::StartStop::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::StartStop::VERSION   = '0.01';
+  $Data::BitStream::Code::StartStop::VERSION   = '0.02';
 }
 
 our $CODEINFO = [
@@ -46,9 +46,16 @@ requires qw(maxbits read skip write put_unary put_binword put_rice);
 #
 # A stop parameter of undef means infinity.
 
+sub _verify_p_array {
+  my $p = shift;
+  return 0 unless defined $p && ref $p eq 'ARRAY' && scalar @$p >= 2;
+  foreach my $step (@$p) {
+    return 0 unless (!defined $step) || ($step >= 0);
+  }
+  1;
+}
 sub _make_prefix_map {
   my $p = shift;
-  die "p must be an array" unless (ref $p eq 'ARRAY') && scalar @$p >= 2;
   my $maxbits = shift;
 
   my @pmap;        # [prefix bits, prefix cmp, min, max, read bits]
@@ -60,7 +67,6 @@ sub _make_prefix_map {
   my $minval = -1;
   my $maxval = 0;
   foreach my $step (@$p) {
-    die "invalid parameters" if defined $step && $step < 0;
     $bits += (defined $step) ? $step : $maxbits;
     $bits = $maxbits if $bits > $maxbits;
     $minval += $maxval+1;
@@ -77,13 +83,17 @@ sub _make_prefix_map {
 
 # class method -- returns the maximum storable value for a given ss(...) code
 sub max_code_for_startstop {
-  my @pmap = _make_prefix_map(shift, Data::BitStream::Base::maxbits);
+  my $p = shift;
+  return unless _verify_p_array($p);
+  my @pmap = _make_prefix_map($p, Data::BitStream::Base::maxbits);
   return $pmap[-1]->[3];
 }
 
 sub get_startstop {
   my $self = shift;
-  my @pmap = _make_prefix_map(shift, $self->maxbits);
+  my $p = shift;
+  $self->error_code('param', 'malformed step array') unless _verify_p_array($p);
+  my @pmap = _make_prefix_map($p, $self->maxbits);
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -107,11 +117,13 @@ sub get_startstop {
 }
 sub put_startstop {
   my $self = shift;
-  my @pmap = _make_prefix_map(shift, $self->maxbits);
+  my $p = shift;
+  $self->error_code('param', 'malformed step array') unless _verify_p_array($p);
+  my @pmap = _make_prefix_map($p, $self->maxbits);
   my $global_maxval = $pmap[-1]->[3];
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
-    die "value out of range 0-$global_maxval" if $val > $global_maxval;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
+    $self->error_code('range', $val, 0,$global_maxval) if $val > $global_maxval;
     my $prefix = 0;
     $prefix++ while ($val > $pmap[$prefix]->[3]);
     my($prefix_bits,$prefix_cmp,$minval,$maxval,$bits) = @{$pmap[$prefix]};
@@ -128,14 +140,24 @@ sub put_startstop {
   }
 }
 
+sub _extract_p {
+  my $self = shift;
+  my $p = shift;
+
+  $self->error_code('param', 'p must be an array')
+               unless (defined $p) && (ref $p eq 'ARRAY') && scalar @$p >= 3;
+  my($start, $step, $stop) = @$p;
+  my $maxstop = $self->maxbits;
+  $stop = $maxstop if (!defined $stop) || ($stop > $maxstop);
+
+  $self->error_code('param', "start must be in range 0-$maxstop") unless ($start >= 0) && ($start <= $maxstop);
+  $self->error_code('param', 'step must be >= 0') unless $step >= 0;
+  $self->error_code('param', 'stop must be >= start') unless $stop >= $start;
+
+  ($start, $step, $stop, $maxstop);
+}
 sub _map_sss_to_ss {
   my($start, $step, $stop, $maxstop) = @_;
-  $stop = $maxstop if (!defined $stop) || ($stop > $maxstop);
-  die "invalid parameters" unless ($start >= 0) && ($start <= $maxstop);
-  die "invalid parameters" unless $step >= 0;
-  die "invalid parameters" unless $stop >= $start;
-  return if $start == $stop;  # Binword
-  return if $step == 0;       # Rice
 
   my @pmap = ($start);
   my $blen = $start;
@@ -149,32 +171,28 @@ sub _map_sss_to_ss {
 
 sub put_startstepstop {
   my $self = shift;
-  my $p = shift;
-  die "invalid parameters" unless (ref $p eq 'ARRAY') && scalar @$p == 3;
+  $self->error_stream_mode('write') unless $self->writing;
+  my ($start, $step, $stop, $maxstop) = _extract_p($self, shift);
 
-  my($start, $step, $stop) = @$p;
-  my @pmap = _map_sss_to_ss($start, $step, $stop, $self->maxbits);
-  if (scalar @pmap < 2) {
-    return $self->put_binword($start, @_) if $start == $stop;
-    return $self->put_rice($start, @_)    if $step == 0;
-    die "unexpected";
-  }
+  return $self->put_binword($start, @_) if $start == $stop;
+  return $self->put_rice($start, @_)    if $step == 0;
+
+  my @pmap = _map_sss_to_ss($start, $step, $stop, $maxstop);
+  $self->error_code('assert', "unknown array condition") if scalar @pmap < 2;
   #print "Turning sss($start-$step-$stop) into ss(", join("-",@pmap), ")\n";
 
   $self->put_startstop( [@pmap], @_ );
 }
 sub get_startstepstop {
   my $self = shift;
-  my $p = shift;
-  die "invalid parameters" unless (ref $p eq 'ARRAY') && scalar @$p == 3;
+  $self->error_stream_mode('read') if $self->writing;
+  my ($start, $step, $stop, $maxstop) = _extract_p($self, shift);
 
-  my($start, $step, $stop) = @$p;
-  my @pmap = _map_sss_to_ss($start, $step, $stop, $self->maxbits);
-  if (scalar @pmap < 2) {
-    return $self->get_binword($start, @_) if $start == $stop;
-    return $self->get_rice($start, @_)    if $step == 0;
-    die "unexpected";
-  }
+  return $self->get_binword($start, @_) if $start == $stop;
+  return $self->get_rice($start, @_)    if $step == 0;
+
+  my @pmap = _map_sss_to_ss($start, $step, $stop, $maxstop);
+  $self->error_code('assert', "unknown array condition") if scalar @pmap < 2;
 
   return $self->get_startstop( [@pmap], @_ );
 }
@@ -191,7 +209,7 @@ Data::BitStream::Code::StartStop - A Role implementing Start/Stop and Start-Step
 
 =head1 VERSION
 
-version 0.01
+version 0.02
 
 =head1 DESCRIPTION
 
@@ -328,7 +346,7 @@ Dana Jacobsen <dana@acm.org>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011-2012 by Dana Jacobsen <dana@acm.org>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

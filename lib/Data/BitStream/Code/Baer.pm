@@ -26,11 +26,11 @@ requires 'read', 'write', 'put_unary', 'get_unary';
 sub put_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k > 32 || $k < -32;
+  $self->error_code('param', 'k must be between -32 and 32') if $k > 32 || $k < -32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   foreach my $v (@_) {
-    die "value must be >= 0" unless defined $v and $v >= 0;
+    $self->error_code('zeroval') unless defined $v and $v >= 0;
     if ($v < $mk) {
       $self->put_unary1($v);
       next;
@@ -64,7 +64,7 @@ sub put_baer {
 sub get_baer {
   my $self = shift;
   my $k = shift;
-  die "invalid parameters" if $k > 32 || $k < -32;
+  $self->error_code('param', 'k must be between -32 and 32') if $k > 32 || $k < -32;
   my $mk = ($k < 0) ? int(-$k) : 0;
 
   my $count = shift;
@@ -73,7 +73,9 @@ sub get_baer {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  $self->code_pos_start('Baer');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $C = $self->get_unary1;
     last unless defined $C;
     if ($C < $mk) {
@@ -98,6 +100,7 @@ sub get_baer {
 
     push @vals, $val;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

@@ -43,7 +43,7 @@ sub put_levenstein {
   my $self = shift;
 
   foreach my $v (@_) {
-    die "value must be >= 0" unless defined $v and $v >= 0;
+    $self->error_code('zeroval') unless defined $v and $v >= 0;
     if ($v == 0) { $self->write(1, 0); next; }
 
     # Simpler code:
@@ -91,6 +91,7 @@ if (0) {
 
 sub get_levenstein {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -98,34 +99,27 @@ sub get_levenstein {
 
   my @vals;
   my $maxbits = $self->maxbits;
-  my $len = $self->len;
+  $self->code_pos_start('Levenstein');
   while ($count-- > 0) {
-    my $startpos = $self->pos;
-    my $pos = $startpos;
+    $self->code_pos_set;
 
     my $C = $self->get_unary1;
     last unless defined $C;
-    $pos += $C+1;
 
     my $val = 0;
     if ($C > 0) {
       my $N = 1;
       for (1 .. $C-1) {
-        if ($N > $maxbits) {
-          $self->skip(-($pos-$startpos));  # Restore position
-          die "code error: Levenstein overflow";
-        }
-        if ( ($pos+$N) > $len ) {
-          $self->skip(-($pos-$startpos));  # Restore position
-          die "read off end of stream";
-        }
-        $pos += $N;
-        $N = (1 << $N) | $self->read($N);
+        $self->error_code('overflow') if $N > $maxbits;
+        my $next = $self->read($N);
+        $self->error_off_stream unless defined $next;
+        $N = (1 << $N) | $next;
       }
       $val = $N;
     }
     push @vals, $val;
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

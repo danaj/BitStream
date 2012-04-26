@@ -3,7 +3,6 @@
 
 - documentation for ARice and BLVec
 
-- tests for invalid behavior
 - tests for consistent die return strings
   x read unary off end of stream
   x put negative numbers should give "value must be >= 0" for all put_*
@@ -11,6 +10,8 @@
   - put_* with undefined parameters or undef value
   - get_* with undefined parameters
   - put_string with invalid string (e.g. '0012')
+
+- test all open modes, especially write-only
 
 - Export
 
@@ -24,10 +25,6 @@
 
 - tie to a file to avoid holding everything in memory.
   Either File::Map or PerlIO :mmap or Sys::Mmap
-
-- test all open modes, especially write-only
-
-- MinimalVec read off end of stream:  get_unary and get_unary1 
 
 CODES:
 

@@ -30,14 +30,18 @@ requires qw(read write maxbits);
 
 sub put_escape {
   my $self = shift;
+  $self->error_stream_mode('write') unless $self->writing;
   my $p = shift;
-  die "p must be an array" unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
+  $self->error_code('param', 'p must be an array') unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
 
   my $maxbits = $self->maxbits;
   my @parray = map { (defined $_ && $_ <= $maxbits) ? $_ : $maxbits } @$p;
-  foreach my $p (@parray) {  die "invalid parameters" if $p <= 0;  }
+  foreach my $p (@parray) {
+    $self->error_code('param', 'p entries must be > 0') if $p <= 0;
+  }
 
   foreach my $val (@_) {
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     my @bitarray = @parray;
     my $bits = shift @bitarray;
     my $min = 0;
@@ -48,7 +52,7 @@ sub put_escape {
     while ( ($val-$min) > $maxval ) {
       $onebits += $bits;
       $min += $maxval+1;
-      die "Cannot encode $val" if scalar @bitarray == 0;
+      $self->error_code('range', $val, 0, $maxval) if scalar @bitarray == 0;
       $bits = shift @bitarray;
       $maxval = ($bits < $maxbits) ? (1<<$bits)-2 : ~0-1;
       $maxval++ if scalar @bitarray == 0;
@@ -63,8 +67,9 @@ sub put_escape {
 
 sub get_escape {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $p = shift;
-  die "p must be an array" unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
+  $self->error_code('param', 'p must be an array') unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -72,7 +77,9 @@ sub get_escape {
 
   my $maxbits = $self->maxbits;
   my @parray = map { (defined $_ && $_ <= $maxbits) ? $_ : $maxbits } @$p;
-  foreach my $p (@parray) {  die "invalid parameters" if $p <= 0;  }
+  foreach my $p (@parray) {
+    $self->error_code('param', 'p entries must be > 0') if $p <= 0;
+  }
 
   my @vals;
   while ($count-- > 0) {
@@ -80,7 +87,7 @@ sub get_escape {
     my($min,$maxval,$bits,$v) = (-1,0,0,0);
     do {
       $min += $maxval+1;
-      die "invalid encoding" if scalar @bitarray == 0;
+      $self->error_code('overflow') if scalar @bitarray == 0;
       $bits = shift @bitarray;
       $maxval = ($bits < $maxbits) ? (1<<$bits)-2 : ~0-1;
       $maxval++ if scalar @bitarray == 0;

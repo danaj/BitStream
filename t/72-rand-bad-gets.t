@@ -26,7 +26,7 @@ my $s = Data::BitStream->new;
 for (1 .. $nloops)
 {
   $s->erase_for_write;
-  my $nshorts = 8;
+  my $nshorts = 16; # 16*16-bits = 256 bytes
   for (1 .. $nshorts) {
     $s->write(16, int(rand(65536)));
   }
@@ -34,20 +34,22 @@ for (1 .. $nloops)
   $s->write(3, 2);
   $s->write_close;
 
+  # Pick a random position to start
+  my $pos = int(rand(64));
   foreach my $code (@encodings) {
     # Set position to a little way in
-    $s->rewind;  $s->skip(3);  die "Position error" unless $s->pos == 3;
+    $s->rewind;  $s->skip($pos);  die "Position error" unless $s->pos == $pos;
     my $v;
     eval { $v = $s->code_get($code); };
     if ($@ eq '') {
       # The random data is decoded as a value.  Good for us.
       isnt($v, undef, "Read a value with $code");
-      cmp_ok($s->pos, '>', 3, "Good $code read at least one bit");
+      cmp_ok($s->pos, '>', $pos, "Good $code read at least one bit");
     } else {
       # The only error we should see is a code error, and we expect the
       # stream position to remain unchanged after the trapped read.
       like($@, qr/code error/i, "$code trapped bad read");
-      is($s->pos, 3, "Bad $code read left position unchanged");
+      is($s->pos, $pos, "Bad $code read left position unchanged");
     }
   }
 }

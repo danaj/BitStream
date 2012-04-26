@@ -30,7 +30,7 @@ sub put_delta {
   my $maxval = $self->maxval;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     if ($val == $maxval) {
       $self->put_gamma($maxbits);
     } else {
@@ -52,22 +52,21 @@ sub get_delta {
 
   my @vals;
   my $maxbits = $self->maxbits;
+  $self->code_pos_start('Delta');
   while ($count-- > 0) {
+    $self->code_pos_set;
     my $base = $self->get_gamma();
     last unless defined $base;
-    if ($base == $maxbits) {
-      push @vals, $self->maxval;
-    } elsif ($base  > $maxbits) { 
-      # Skip back to the start of the invalid gamma value
-      my $glen = 1;  $glen += 2 while ( $base >= ((2 << ($glen>>1))-1) );
-      $self->skip(-$glen);
-      die "code error: Delta base $base";
-    } else {
-      my $val = 1 << $base;
-      $val |= $self->read($base)  if $base > 0;
-      push @vals, $val-1;
+    if    ($base == 0)        { push @vals, 0; }
+    elsif ($base == $maxbits) { push @vals, $self->maxval; }
+    elsif ($base  > $maxbits) { $self->error_code('base', $base); }
+    else {
+      my $remainder = $self->read($base);
+      $self->error_off_stream unless defined $remainder;
+      push @vals, ((1 << $base) | $remainder)-1;
     }
   }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 no Mouse::Role;

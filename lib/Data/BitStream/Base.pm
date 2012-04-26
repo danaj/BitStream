@@ -1,9 +1,10 @@
 package Data::BitStream::Base;
 use strict;
 use warnings;
+use Carp;
 BEGIN {
   $Data::BitStream::Base::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Base::VERSION   = '0.02';
+  $Data::BitStream::Base::VERSION   = '0.03';
 }
 
 our $CODEINFO = [ { package   => __PACKAGE__,
@@ -35,6 +36,12 @@ use Mouse::Role;
 has 'pos'     => (is => 'ro', isa => 'Int', writer => '_setpos', default => 0);
 has 'len'     => (is => 'ro', isa => 'Int', writer => '_setlen', default => 0);
 has 'mode'    => (is => 'rw', default => 'rdwr');
+has '_code_pos_array' => (is => 'rw',
+                          isa => 'ArrayRef[Int]',
+                          default => sub {[]} );
+has '_code_str_array' => (is => 'rw',
+                          isa => 'ArrayRef[Str]',
+                          default => sub {[]} );
 
 has 'file'         => (is => 'ro', writer => '_setfile');
 has 'fheader'      => (is => 'ro', writer => '_setfheader');
@@ -133,24 +140,24 @@ use constant maxval  => $_all_ones;
 
 sub rewind {
   my $self = shift;
-  die "rewind while writing" if $self->writing;
+  $self->error_stream_mode('rewind') if $self->writing;
   $self->_setpos(0);
   1;
 }
 sub skip {
   my $self = shift;
-  die "skip while writing" if $self->writing;
+  $self->error_stream_mode('skip') if $self->writing;
   my $skip = shift;
   my $pos = $self->pos;
   my $len = $self->len;
   my $newpos = $pos + $skip;
-  die "skip off stream" if $newpos < 0 || $newpos > $len;
+  $self->error_off_stream('skip') if $newpos < 0 || $newpos > $len;
   $self->_setpos($newpos);
   1;
 }
 sub exhausted {
   my $self = shift;
-  die "exhausted while writing" if $self->writing;
+  $self->error_stream_mode('exhausted') if $self->writing;
   $self->pos >= $self->len;
 }
 sub erase {
@@ -162,7 +169,7 @@ sub erase {
 }
 sub read_open {
   my $self = shift;
-  die "read while stream opened writeonly" if $self->mode eq 'wo';
+  $self->error_stream_mode('read') if $self->mode eq 'wo';
   $self->write_close if $self->writing;
   my $file = $self->file;
   if (defined $file) {
@@ -195,7 +202,7 @@ sub read_open {
 }
 sub write_open {
   my $self = shift;
-  die "write while stream opened readonly" if $self->mode eq 'ro';
+  $self->error_stream_mode('write') if $self->mode eq 'ro';
   if (!$self->writing) {
     $self->_setwrite(1);
     # pos is now ignored
@@ -222,7 +229,144 @@ sub write_close {
   1;
 }
 
-# combination functions
+
+####### Error handling
+#
+# This section has two purposes:
+#   1. enforce a common set of failure messages for all codes.
+#   2. enable the position to be reset to the start of a code on an error.
+#
+# Number 2 is relatively complex since codes can be composed of other codes,
+# and we want to back up to the start of the outermost code.  We set up a stack
+# of saved positions which can be used when an error occurs.
+#
+# If your code methods do not either call other codes or make multiple calls to
+# read / skip, then there really is no extra effort.  If they do, then it is
+# important to call code_pos_start() before starting, code_pos_set() before
+# each successive value, and code_pos_end() when done.  What you get in return
+# is not having to worry about how far you've read -- the position will be
+# restored to the start of the outermost code.
+#
+# From the user's point of view, this means if they try to read a complicated
+# code and it is invalid, the position is left unchanged, instead of some
+# random distance forward in the stream.
+
+sub code_pos_start {  # Starting a code
+  my $self = shift;
+  my $name = shift;
+  push @{$self->_code_pos_array}, $self->pos;
+  push @{$self->_code_str_array}, $name;
+  #print STDERR "error stack is ", join(",", @{$self->_code_str_array}), "\n";
+}
+sub code_pos_set {    # Replace position
+  my $self = shift;
+  $self->_code_pos_array->[-1] = $self->pos;
+}
+sub code_pos_end {    # Remove position -- we're not in this code any more
+  my $self = shift;
+  pop @{$self->_code_pos_array};
+  pop @{$self->_code_str_array};
+}
+sub _code_restore_pos {  # Returns string of code name
+  my $self = shift;
+  # Check that we aren't trying to restore a position while writing
+  if ($self->writing and @{$self->_code_pos_array}) {
+    confess "Found code position while error in writing: " . $self->_code_str_array->[0];
+  }
+  # Put position back to start of topmost code
+  if (@{$self->_code_pos_array}) {
+    $self->_setpos($self->_code_pos_array->[0]);
+    @{$self->_code_pos_array} = ();
+  }
+  my $codename = '';
+  if (@{$self->_code_str_array}) {
+    $codename = $self->_code_str_array->[0] if defined $self->_code_str_array->[0];
+    @{$self->_code_str_array} = ();
+  }
+  $codename;
+}
+
+# This can be called after any code routines have been used, to verify they
+# cleaned up after themselves.  Failing this usually means someone died inside
+# an eval, while being called by a code routine.  It's also possible a broken
+# code routine did a code_pos_start then returned without a matching end.
+sub code_pos_is_set {
+  my $self = shift;
+  return unless @{$self->_code_pos_array};   # return undef if nothing.
+
+  my $text = join(",", @{$self->_code_str_array});
+  $text;
+}
+
+sub error_off_stream {
+  my $self = shift;
+  my $skipping = shift;
+
+  # Give the skip error only if we were not reading a code.
+  if ( (defined $skipping) && (@{$self->_code_pos_array} == 0) ) {
+    croak "skip off end of stream";
+  }
+
+  my $codename = $self->_code_restore_pos();
+  $codename = " ($codename)" if $codename ne '';
+  croak "read off end of stream$codename";
+}
+sub error_stream_mode {
+  my $self = shift;
+  my $type = shift;
+  my $codename = $self->_code_restore_pos();
+  $codename = " ($codename)" if $codename ne '';
+
+  croak "write while stream opened readonly"
+        if ($type eq 'write') && ($self->mode eq 'ro');
+  croak "read while stream opened writeonly"
+        if ($type eq 'read')  && ($self->mode eq 'wo');
+
+  if ($self->writing) {
+    if    ($type eq 'rewind') { croak "rewind while writing$codename"; }
+    elsif ($type eq 'read'  ) { croak "read while writing$codename"; }
+    elsif ($type eq 'skip'  ) { croak "skip while writing$codename"; }
+    elsif ($type eq 'exhausted') { croak "exhausted while writing$codename"; }
+  } else {
+    if    ($type eq 'write' ) { croak "write while reading$codename"; }
+  }
+  croak "Mode error$codename: $type";
+}
+sub error_code {
+  my $self = shift;
+  my $type = shift;
+  my $text = shift;
+  if ($type eq 'zeroval') {    # Implied text
+    $type = 'value';
+    $text = 'value must be >= 0';
+  }
+  if ($type eq 'range') {      # Range is given the value, the min, and the max
+    $type = 'value';
+    if (!defined $text) {
+      $text = 'value out of range';
+    } else {
+      my $min = shift;
+      my $max = shift;
+      $text = "value $text out of range";
+      $text .= " $min - $max" if defined $min && defined $max;
+    }
+  }
+  my $codename = $self->_code_restore_pos();
+  my $trailer = '';
+  $trailer .= " ($codename)" if $codename ne '';
+  $trailer .= ": $text" if defined $text;
+  if    ($type eq 'param')  { croak "invalid parameters$trailer"; }
+  elsif ($type eq 'value')  { croak "invalid value$trailer"; }
+  elsif ($type eq 'string') { croak "invalid string$trailer"; }
+  elsif ($type eq 'base')   { croak "code error: invalid base$trailer";}
+  elsif ($type eq 'overflow'){croak "code error: overflow$trailer";}
+  elsif ($type eq 'short')  { croak "short read$trailer"; }
+  elsif ($type eq 'assert') { confess "internal assert$trailer"; }
+  else                      { confess "Unknown error$trailer"; }
+}
+
+
+####### Combination functions
 sub erase_for_write {
   my $self = shift;
   $self->erase;
@@ -234,22 +378,25 @@ sub rewind_for_read {
   $self->rewind;
 }
 
+
 sub readahead {
   my $self = shift;
   my $bits = shift;
   $self->read($bits, 'readahead');
 }
 sub read {                 # You need to implement this.
-  die "Implement this.";
+  confess "The read method has not been implemented!";
 }
 sub write {                # You need to implement this.
-  die "Implement this.";
+  confess "The write method has not been implemented!";
 }
+
+
 sub put_unary {
   my $self = shift;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
 
     # Since the write routine is allowed to take any number of bits when
@@ -271,18 +418,16 @@ sub put_unary {
 }
 sub get_unary {            # You ought to override this.
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my $pos = $self->pos;
-  my $len = $self->len;
-
   my @vals;
+  $self->code_pos_start('Unary');
   while ($count-- > 0) {
-    last if $pos >= $len;
+    $self->code_pos_set;
     my $val = 0;
 
     # Simple code:
@@ -296,21 +441,20 @@ sub get_unary {            # You ought to override this.
     my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
     while ($word == 0) {
-      die "read off end of stream" unless $self->skip(maxbits);
       $val += maxbits;
+      $self->skip(maxbits);
       $word = $self->read(maxbits, 'readahead');
     }
     while (($word >> (maxbits-1) & 1) == 0) {
       $val++;
       $word <<= 1;
     }
-    die "read off end of stream" if ($pos+$val+1) >= $len;
     my $nbits = $val % maxbits;
     $self->skip($nbits + 1);
 
     push @vals, $val;
   }
-
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
@@ -319,7 +463,7 @@ sub put_unary1 {
   my $self = shift;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
     if ($val < maxbits) {
       $self->write($val+1, maxval << 1);
@@ -334,18 +478,16 @@ sub put_unary1 {
 }
 sub get_unary1 {            # You ought to override this.
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my $pos = $self->pos;
-  my $len = $self->len;
-
   my @vals;
+  $self->code_pos_start('Unary1');
   while ($count-- > 0) {
-    last if $pos >= $len;
+    $self->code_pos_set;
     my $val = 0;
 
     # Simple code:
@@ -359,21 +501,20 @@ sub get_unary1 {            # You ought to override this.
     my $word = $self->read(maxbits, 'readahead');
     last unless defined $word;
     while ($word == maxval) {
-      die "read off end of stream" unless $self->skip(maxbits);
       $val += maxbits;
+      $self->skip(maxbits);
       $word = $self->read(maxbits, 'readahead');
     }
     while (($word >> (maxbits-1) & 1) != 0) {
       $val++;
       $word <<= 1;
     }
-    die "read off end of stream" if ($pos+$val+1) >= $len;
     my $nbits = $val % maxbits;
     $self->skip($nbits + 1);
 
     push @vals, $val;
   }
-
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
@@ -381,19 +522,21 @@ sub get_unary1 {            # You ought to override this.
 sub put_binword {
   my $self = shift;
   my $bits = shift;
-  die "invalid parameters" if ($bits <= 0) || ($bits > maxbits);
+  $self->error_code('param', "bits must be in range 0-" . maxbits)
+                   if ($bits <= 0) || ($bits > maxbits);
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     $self->write($bits, $val);
   }
   1;
 }
 sub get_binword {
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $bits = shift;
-  die "invalid parameters" if ($bits <= 0) || ($bits > maxbits);
+  $self->error_code('param', "bits must be in range 0-" . maxbits)
+                   if ($bits <= 0) || ($bits > maxbits);
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -412,11 +555,11 @@ sub get_binword {
 # Write one or more text binary strings (e.g. '10010')
 sub put_string {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   foreach my $str (@_) {
     next unless defined $str;
-    die "invalid string" if $str =~ tr/01//c;
+    $self->error_code('string') if $str =~ tr/01//c;
     my $bits = length($str);
     next unless $bits > 0;
 
@@ -435,9 +578,10 @@ sub put_string {
 # Get a text binary string.  Similar to read, but bits can be 0 - len.
 sub read_string {
   my $self = shift;
+  $self->error_stream_mode('read') if $self->writing;
   my $bits = shift;
-  die "invalid bits: $bits" unless defined $bits && $bits >= 0;
-  die "short read" unless $bits <= ($self->len - $self->pos);
+  $self->error_code('param', "bits must be >= 0") unless defined $bits && $bits >= 0;
+  $self->error_code('short') unless $bits <= ($self->len - $self->pos);
   my $str = '';
   while ($bits >= 32) {
     $str .= unpack("B32", pack("N", $self->read(32)));
@@ -487,7 +631,7 @@ sub to_raw {               # You ought to override this.
 }
 sub put_raw {              # You ought to override this.
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   my $vec  = shift;
   my $bits = shift || int((length($vec)+7)/8);
@@ -871,7 +1015,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

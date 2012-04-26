@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::MinimalVec::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::MinimalVec::VERSION   = '0.01';
+  $Data::BitStream::MinimalVec::VERSION   = '0.02';
 }
 
 use Mouse;
@@ -31,15 +31,16 @@ after 'erase' => sub { shift->_vec(''); 1; };
 
 sub read {
   my $self = shift;
-  die "read while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $bits = shift;
-  die "invalid bits: $bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  $self->error_code('param', 'bits must be in range 1-' . $self->maxbits)
+         unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
-  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
+  $self->error_off_stream if !$peek && ($pos+$bits) > $len;
 
   my $val = 0;
   my $rvec = $self->_vecref;
@@ -51,11 +52,11 @@ sub read {
 }
 sub write {
   my $self = shift;
-  die "write while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
   my $bits = shift;
-  die "invalid bits: $bits" unless defined $bits && $bits > 0;
+  $self->error_code('param', 'bits must be > 0') unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "undefined value" unless defined $val;
+  $self->error_code('zeroval') unless defined $val and $val >= 0;
 
   my $len  = $self->len;
   my $rvec = $self->_vecref;
@@ -65,7 +66,7 @@ sub write {
   } elsif ($val == 1) {
     vec($$rvec, $len + $bits - 1, 1) = 1;
   } else {
-    die "invalid bits: $bits" if $bits > $self->maxbits;
+    $self->error_code('param', 'bits must be <= ' . $self->maxbits) if $bits > $self->maxbits;
 
     my $wpos = $len + $bits-1;
     foreach my $bit (0 .. $bits-1) {
@@ -191,7 +192,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

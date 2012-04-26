@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::Vec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::Vec::VERSION = '0.01';
+  $Data::BitStream::Vec::VERSION = '0.02';
 }
 
 use Mouse;
@@ -38,17 +38,19 @@ after 'erase' => sub {
   $self->_vec('');
   1;
 };
+
 sub read {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $bits = shift;
-  die "Invalid bits" unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
+  $self->error_code('param', 'bits must be in range 1-' . $self->maxbits)
+         unless defined $bits && $bits > 0 && $bits <= $self->maxbits;
   my $peek = (defined $_[0]) && ($_[0] eq 'readahead');
 
   my $pos = $self->pos;
   my $len = $self->len;
   return if $pos >= $len;
-  die "read off end of stream" if !$peek && ($pos+$bits) > $len;
+  $self->error_off_stream if !$peek && ($pos+$bits) > $len;
 
   my $val = 0;
   my $rvec = $self->_vecref;
@@ -60,12 +62,13 @@ sub read {
 }
 sub write {
   my $self = shift;
+  $self->error_stream_mode('write') unless $self->writing;
   my $bits = shift;
+  $self->error_code('param', 'bits must be > 0') unless defined $bits && $bits > 0;
   my $val  = shift;
-  die "Bits must be > 0" unless $bits > 0;
-  my $len  = $self->len;
-  die "put while not writing" unless $self->writing;
+  $self->error_code('zeroval') unless defined $val and $val >= 0;
 
+  my $len  = $self->len;
   my $rvec = $self->_vecref;
 
   if ($val == 0) {
@@ -73,7 +76,7 @@ sub write {
   } elsif ($val == 1) {
     vec($$rvec, $len + $bits - 1, 1) = 1;
   } else {
-    die "bits must be <= " . $self->maxbits . "\n" if $bits > $self->maxbits;
+    $self->error_code('param', 'bits must be <= ' . $self->maxbits) if $bits > $self->maxbits;
 
     my $wpos = $len + $bits-1;
     foreach my $bit (0 .. $bits-1) {
@@ -87,13 +90,13 @@ sub write {
 
 sub put_unary {
   my $self = shift;
-  die "put while reading" unless $self->writing;
+  $self->error_stream_mode('write') unless $self->writing;
 
   my $rvec = $self->_vecref;
   my $len = $self->len;
 
   foreach my $val (@_) {
-    die "value must be >= 0" unless defined $val and $val >= 0;
+    $self->error_code('zeroval') unless defined $val and $val >= 0;
     vec($$rvec, $len + $val+1 - 1, 1) = 1;
     $len += $val+1;
   }
@@ -103,7 +106,7 @@ sub put_unary {
 }
 sub get_unary {
   my $self = shift;
-  die "get while writing" if $self->writing;
+  $self->error_stream_mode('read') if $self->writing;
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
@@ -126,17 +129,21 @@ sub get_unary {
         my $byte_pos = $onepos >> 3;
         my $start_byte_pos = $byte_pos;
         my $last_byte_pos = ($len+7) >> 3;
+      {
+        # Reading off the end of a stream will cause these warnings.
+        no warnings qw(uninitialized substr);
         $byte_pos += 32 while ( (($byte_pos+31) <= $last_byte_pos) &&
                                 (substr($$rvec,$byte_pos,32) eq "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00") );
         $byte_pos += 4 while ( (($byte_pos+3) <= $last_byte_pos) &&
                                 (substr($$rvec,$byte_pos,4) eq "\x00\x00\x00\x00") );
+      }
         $byte_pos++ while ( ($byte_pos <= $last_byte_pos) &&
                             (vec($$rvec, $byte_pos, 8) == 0) );
         $onepos += 8*($byte_pos-$start_byte_pos);
       }
       $onepos++ while ( ($onepos < $len) && (vec($$rvec, $onepos, 1) == 0) );
     }
-    die "get_unary read off end of vector" if $onepos >= $len;
+    $self->error_off_stream() if $onepos >= $len;
 
     push @vals, $onepos - $pos;
     $pos = $onepos + 1;
@@ -156,7 +163,7 @@ sub to_string {
   my $str = unpack("b$len", $$rvec);
   # unpack sometimes drops 0 bits at the end, so we need to check and add them.
   my $strlen = length($str);
-  die if $strlen > $len;
+  $self->error_code('assert', "string length") if $strlen > $len;
   if ($strlen < $len) {
     $str .= "0" x ($len - $strlen);
   }
@@ -165,7 +172,7 @@ sub to_string {
 sub from_string {
   my $self = shift;
   my $str  = shift;
-  die "invalid string" if $str =~ tr/01//c;
+  $self->error_code('string') if $str =~ tr/01//c;
   my $bits = shift || length($str);
   $self->write_open;
 
@@ -316,7 +323,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
