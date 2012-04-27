@@ -93,7 +93,7 @@ sub is_universal {
 
 sub encoding_list {
   my @e = qw|
-              Unary Unary1 Gamma Delta Omega Fib
+              Unary Unary1 Gamma Delta Omega Fib Fib(3)
               EvenRodeh Levenstein
               Golomb(10) Golomb(16) Golomb(14000)
               Rice(2) Rice(9)
@@ -124,6 +124,9 @@ my %esubs = (
   'levenstein'=>sub{my $stream=shift; my $p=shift; $stream->put_levenstein(@_)},
   'evenrodeh'=>sub{ my $stream=shift; my $p=shift; $stream->put_evenrodeh(@_) },
   'fib'    => sub { my $stream=shift; my $p=shift; $stream->put_fib(@_) },
+  'fib'    => sub { my $stream=shift; my $p=shift;
+                    if (defined $p) { $stream->put_fibgen($p,@_); }
+                    else            { $stream->put_fib(@_);       } },
   'fibc2'  => sub { my $stream=shift; my $p=shift; $stream->put_fib_c2(@_) },
   'binword'=> sub { my $stream=shift; my $p=shift; $stream->put_binword($p,@_)},
   'gg'     => sub { my $stream=shift; my $p=shift; $stream->put_gammagolomb($p,@_) },
@@ -151,7 +154,9 @@ my %dsubs = (
   'omega'  => sub { my $stream=shift; my $p=shift; $stream->get_omega(@_) },
   'levenstein'=>sub{my $stream=shift; my $p=shift; $stream->get_levenstein(@_)},
   'evenrodeh'=>sub{ my $stream=shift; my $p=shift; $stream->get_evenrodeh(@_) },
-  'fib'    => sub { my $stream=shift; my $p=shift; $stream->get_fib(@_) },
+  'fib'    => sub { my $stream=shift; my $p=shift;
+                    if (defined $p) { $stream->get_fibgen($p,@_); }
+                    else            { $stream->get_fib(@_);       } },
   'fibc2'  => sub { my $stream=shift; my $p=shift; $stream->get_fib_c2(@_) },
   'binword'=> sub { my $stream=shift; my $p=shift; $stream->get_binword($p,@_)},
   'gg'     => sub { my $stream=shift; my $p=shift; $stream->get_gammagolomb($p,@_) },

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Fibonacci::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Fibonacci::VERSION   = '0.03';
+  $Data::BitStream::Code::Fibonacci::VERSION   = '0.04';
 }
 
 our $CODEINFO = [ { package   => __PACKAGE__,
@@ -19,6 +19,13 @@ our $CODEINFO = [ { package   => __PACKAGE__,
                     params    => 0,
                     encodesub => sub {shift->put_fib_c2(@_)},
                     decodesub => sub {shift->get_fib_c2(@_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'FibGen',
+                    universal => 1,
+                    params    => 1,
+                    encodesub => sub {shift->put_fibgen(@_)},
+                    decodesub => sub {shift->get_fibgen(@_)},
                   },
                 ];
 
@@ -36,13 +43,15 @@ requires qw(write put_string get_unary read);
 # same stream.  For example, if a C2 code is followed by a zero-based unary
 # code then incorrect parsing will ensue.
 #
-# Note that these are Fib_2 codes.  The concept can be generalized to Fib_m
-# where m >= 2.  In particular the m=3 and m=4 codes have proven useful in some
-# applications (see papers by Klein et al.).
+# The first set of methods, get_fib() and put_fib(), are specifically written
+# for m=2 -- codes using the traditional Fibonacci sequence.  There are also
+# generalized versions, which Klein et al. shows are useful for some
+# applications.  The generalized implementation is typically slower.
 
 # General order m >= 2 sequences.  Generate enough to encode any integer
 # from 0 to ~0.  Note that the first 0,1 for all sequences are removed.
 my @fibs_order;
+my @fib_sums_order;
 sub _calc_fibs_for_order_m {
   my $m = shift;
   die "Internal Fibonacci error" unless $m >= 2;
@@ -55,6 +64,12 @@ sub _calc_fibs_for_order_m {
   }
   splice(@fibm, 0, $m);  # remove the first elements
   $fibs_order[$m] = \@fibm;
+
+  # Calculate sums
+  my @fsums = (0);
+  foreach my $f (@fibm) { push @fsums, $fsums[-1] + $f; }
+  shift @fsums;
+  $fib_sums_order[$m] = \@fsums;
 }
 
 # Since calculating the Fibonacci codes are relatively expensive, cache the
@@ -179,29 +194,35 @@ sub get_fib {
 }
 
 
-# TODO: fibm does not work yet
+########## Generalized Fibonacci codes
 
-sub put_fibm {
+sub put_fibgen {
   my $self = shift;
   $self->error_stream_mode('write') unless $self->writing;
   my $m = shift;
-  $self->error_code('param', 'm must be in range 2-10') unless $m >= 2 && $m <= 10;
+  $self->error_code('param', 'm must be in range 2-16') unless $m >= 2 && $m <= 16;
+
   _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
   my @fibm = @{$fibs_order[$m]};
+  my @fsums = @{$fib_sums_order[$m]};
+  my $term = ~(~0 << $m);
 
   foreach my $val (@_) {
     $self->error_code('zeroval') unless defined $val and $val >= 0;
 
-    if    ($val == 0) {  $self->put_string(      '1' x $m); next; }
-    elsif ($val == 1) {  $self->put_string('0' . '1' x $m); next; }
+    if    ($val == 0) {  $self->write($m, $term); next; }
+    elsif ($val == 1) {  $self->write($m+1, $term); next; }
 
-    my $d = $val+1;
-    my $s = 0;
-    #$s += 20  while (defined $fibm[$s+20]) && ($d >= $fibm[$s+20]);
-    $s++ while ($d >= $fibm[$s]);
+    # The way these codes are built are a different way of thinking about it
+    # than the simple m=2 case.  See Salomon VLC p. 117.
+    # However, the end result is identical for m=2.
+    my $r = '1' x $m . '0';
+    # Determine how many bits we will encode
+    my $s = 1;
+    $s++ while ($val > $fsums[$s]);
+    my $d = $val - $fsums[$s-1] - 1;
 
-    # Generate the string code.
-    my $r = '1' x ($m-1);
+    # Now do a fib encode of these bits
     while ($s-- > 0) {
       if ($d >= $fibm[$s]) {
         $d -= $fibm[$s];
@@ -210,47 +231,62 @@ sub put_fibm {
         $r .= '0';
       }
     }
+
     $self->put_string(scalar reverse $r);
   }
   1;
 }
 
-sub get_fibm {
+sub get_fibgen {
   my $self = shift;
   $self->error_stream_mode('read') if $self->writing;
   my $m = shift;
-  $self->error_code('param', 'm must be in range 2-10') unless $m >= 2 && $m <= 10;
+  $self->error_code('param', 'm must be in range 2-16') unless $m >= 2 && $m <= 16;
+
   _calc_fibs_for_order_m($m) unless defined $fibs_order[$m];
   my @fibm = @{$fibs_order[$m]};
+  my @fsums = @{$fib_sums_order[$m]};
+  my $term = ~(~0 << $m);
+
   my $count = shift;
   if    (!defined $count) { $count = 1;  }
   elsif ($count  < 0)     { $count = ~0; }   # Get everything
   elsif ($count == 0)     { return;      }
 
-  my $term = ~(~0 << $m);
-
   my @vals;
-  $self->code_pos_start("Fibonacci($m)");
+  $self->code_pos_start("FibGen($m)");
   while ($count-- > 0) {
     $self->code_pos_set;
-    my $code = $self->readahead($m);
+    my $code = $self->read($m);
     last unless defined $code;
-    my $val = 1;
+    if ( ($code & $term) == $term) { push @vals, 0; next; }
+    my $next = $self->read(1);
+    $self->error_off_stream unless defined $next;
+    $code = ($code << 1) | $next;
+    if ( ($code & $term) == $term) { push @vals, 1; next; }
+    # $code is now $m+1 bits long
+
+    my $val = 1;  # We will add more after we see how many bits we read
     my $s = 0;
-    while ($code != $term) {
-      my $next = $self->read(1);
-      $self->error_off_stream unless defined $next;
+    do {
+      my $trail = $self->read(1);
+      $self->error_off_stream unless defined $trail;
+      my $next = ($code >> $m) & 1;
+      $code = ($code << 1) | $trail;
       $val += $fibm[$s]  if $next;
       $s++;
-      $code = $self->readahead($m);
-    }
-    $self->skip($m);
-    push @vals, $val-1;
+    } while ( ($code & $term) != $term);
+
+    # Now add in, based on the number of bits, the base amount.
+    $val += $fsums[$s-1];
+    push @vals, $val;
   }
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
+
+# TODO:
 # Consider Sayood's NF3 code, described on pages 67-70 of his
 # Lossless Compression Handbook
 #
@@ -379,7 +415,7 @@ Data::BitStream::Code::Fibonacci - A Role implementing Fibonacci codes
 
 =head1 VERSION
 
-version 0.02
+version 0.04
 
 =head1 DESCRIPTION
 
@@ -406,6 +442,21 @@ Decode one or more Fibonacci C1 codes from the stream.  If count is omitted,
 one value will be read.  If count is negative, values will be read until
 the end of the stream is reached.  In scalar context it returns the last
 code read; in array context it returns an array of all codes read.
+
+=item B< put_fibgen($m, @values) >
+
+Insert one or more values as generalized Fibonacci C1 codes with order C<m>.
+Returns 1.
+
+=item B< get_fibgen($m) >
+
+=item B< get_fib($m, $count) >
+
+Decode one or more generalized Fibonacci C1 codes with order C<m> from the
+stream.  If count is omitted, one value will be read.  If count is negative,
+values will be read until the end of the stream is reached.  In scalar context
+it returns the last code read; in array context it returns an array of all
+codes read.
 
 =item B< put_fib_c2(@values) >
 
@@ -465,7 +516,7 @@ Dana Jacobsen <dana@acm.org>
 
 =head1 COPYRIGHT
 
-Copyright 2011 by Dana Jacobsen <dana@acm.org>
+Copyright 2011-2012 by Dana Jacobsen <dana@acm.org>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

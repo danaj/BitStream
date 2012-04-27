@@ -137,6 +137,7 @@ _generate_generic_getput('', 'gamma');
 _generate_generic_getput('', 'delta');
 _generate_generic_getput('', 'omega');
 _generate_generic_getput('', 'fib');
+_generate_generic_getput('', 'fibgen');
 _generate_generic_getput('', 'levenstein');
 _generate_generic_getput('', 'evenrodeh');
 _generate_generic_getput('', 'gammagolomb');
