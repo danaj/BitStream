@@ -61,7 +61,9 @@ if (eval {require Data::BitStream::BLVec}) {
 # The big item would be any MOP (meta object protocol) handling, since the XS
 # class isn't Moose/Mouse/Moo.
 if (eval {require Data::BitStream::XS}) {
-  $stream_constructors{'xs'} = sub {return Data::BitStream::XS->new();};
+  if ($Data::BitStream::XS::VERSION >= 0.04) {
+    $stream_constructors{'xs'} = sub {return Data::BitStream::XS->new();};
+  }
 }
 
 sub impl_list {
