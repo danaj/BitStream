@@ -216,13 +216,28 @@ sub put_fibgen {
     # The way these codes are built are a different way of thinking about it
     # than the simple m=2 case.  See Salomon VLC p. 117.
     # However, the end result is identical for m=2.
-    my $r = '1' x $m . '0';
+
     # Determine how many bits we will encode
     my $s = 1;
     $s++ while ($val > $fsums[$s]);
     my $d = $val - $fsums[$s-1] - 1;
 
-    # Now do a fib encode of these bits
+    # Generate 32-bit word directly if possible
+    my $sm = $s + $m;
+    if ($sm <= 31) {
+      my $word = $term;
+      foreach my $f (reverse 0 .. $s-1) {
+        if ($d >= $fibm[$f]) {
+          $d -= $fibm[$f];
+          $word |= 1 << ($sm-$f);
+        }
+      }
+      $self->write($sm+1, $word);
+      next;
+    }
+
+    # Encode the bits using string functions
+    my $r = '1' x $m . '0';
     while ($s-- > 0) {
       if ($d >= $fibm[$s]) {
         $d -= $fibm[$s];
@@ -257,29 +272,43 @@ sub get_fibgen {
   $self->code_pos_start("FibGen($m)");
   while ($count-- > 0) {
     $self->code_pos_set;
-    my $code = $self->read($m);
+
+    my $code = $self->get_unary;
     last unless defined $code;
-    if ( ($code & $term) == $term) { push @vals, 0; next; }
-    my $next = $self->read(1);
-    $self->error_off_stream unless defined $next;
-    $code = ($code << 1) | $next;
-    if ( ($code & $term) == $term) { push @vals, 1; next; }
-    # $code is now $m+1 bits long
+
+    # Read the entire code via a set of unary reads
+    my @unary_stack = ($code);
+    # Track the sum of the most recent $m-1 values, which tells us when to quit
+    my $stack_sum = $code;
+    do {
+      my $code = $self->get_unary;
+      $self->error_off_stream unless defined $code;
+      push @unary_stack, $code;
+      $stack_sum -= $unary_stack[-$m] if defined $unary_stack[-$m];
+      $stack_sum += $code;
+    } while ( (@unary_stack < $m) || ($stack_sum != 0) );
+
+    # Simple cases of 0*1111
+    if (scalar @unary_stack == $m) {
+      $code = $unary_stack[0];
+      if    ($code == 0) {  push @vals, 0;  }
+      elsif ($code == 1) {  push @vals, 1;  }
+      else            {  push @vals, $fsums[$code-2] + 1; }
+      next;
+    }
+
+    # At this point our stack ends with (n, m) where n>=0 and m >= 1.
+    # Read from the start, adding in the F(n) codes.
 
     my $val = 1;  # We will add more after we see how many bits we read
-    my $s = 0;
+    my $s = -1;
     do {
-      my $trail = $self->read(1);
-      $self->error_off_stream unless defined $trail;
-      my $next = ($code >> $m) & 1;
-      $code = ($code << 1) | $trail;
-      $val += $fibm[$s]  if $next;
-      $s++;
-    } while ( ($code & $term) != $term);
-
-    # Now add in, based on the number of bits, the base amount.
-    $val += $fsums[$s-1];
-    push @vals, $val;
+      $code = shift @unary_stack;
+      $s += $code+1;
+      $val += $fibm[$s];
+    } while @unary_stack > $m;
+    $s += $unary_stack[0]-1;   # Add in any leading zeros before the 01111.
+    push @vals, $val + $fsums[$s];
   }
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
