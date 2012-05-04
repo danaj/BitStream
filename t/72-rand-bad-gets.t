@@ -6,7 +6,7 @@ use Test::More;
 use Data::BitStream;
 my @encodings = qw|
               Unary Unary1 Gamma Delta Omega
-              Fibonacci EvenRodeh Levenstein
+              Fibonacci FibGen(3) FibGen(12) EvenRodeh Levenstein
               Golomb(10) Golomb(16) Golomb(14000)
               Rice(2) Rice(9)
               GammaGolomb(3) GammaGolomb(128) ExpGolomb(5)
@@ -30,8 +30,9 @@ for (1 .. $nloops)
   for (1 .. $nshorts) {
     $s->write(16, int(rand(65536)));
   }
-  # write 010 at end so no code will go off the end
-  $s->write(3, 2);
+  # write various terminators to force codes to end
+  $s->write(3, 2);  # 010 ends most codes
+  $s->put_string( '1' x (9*16*$nshorts+9) );  # Lots of 1s to end Rice/Golomb
   $s->write_close;
 
   # Pick a random position to start

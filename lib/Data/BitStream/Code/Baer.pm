@@ -73,6 +73,7 @@ sub get_baer {
   elsif ($count == 0)     { return;      }
 
   my @vals;
+  my $maxbits = $self->maxbits;
   $self->code_pos_start('Baer');
   while ($count-- > 0) {
     $self->code_pos_set;
@@ -83,6 +84,7 @@ sub get_baer {
       next;
     }
     $C -= $mk;
+    $self->error_code('overflow') if $C > $maxbits;
     my $val = ($self->read(1) == 0)  ?  1  :  2 + $self->read(1);
 
     # Code following the logic in the paper:

@@ -182,6 +182,7 @@ sub get_fib {
     my $b = -1;
     do {
       $b += $code+1;
+      $self->error_code('overflow') unless defined $fibs[$b];
       $val += $fibs[$b];
       $code = $self->get_unary;
       $self->error_off_stream unless defined $code;
@@ -301,6 +302,7 @@ sub get_fibgen {
       # Process leftmost bits
       my $left = $fullcode >> $m;
       foreach my $c (reverse 0 .. $codelen-1) {
+        $self->error_code('overflow') unless defined $fibm[$s];
         $val += $fibm[$s]  if ($left & (1 << $c)); 
         #my $adder = ($left & (1 << $c))  ?  $fibm[$s]  :  0;
         #print "s = $s  val = $val (added $adder)\n";
