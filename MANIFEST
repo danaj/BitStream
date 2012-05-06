@@ -11,6 +11,7 @@ lib/Data/BitStream/MinimalVec.pm
 lib/Data/BitStream/String.pm
 lib/Data/BitStream/Vec.pm
 lib/Data/BitStream/WordVec.pm
+lib/Data/BitStream/Code/Additive.pm
 lib/Data/BitStream/Code/ARice.pm
 lib/Data/BitStream/Code/Baer.pm
 lib/Data/BitStream/Code/BoldiVigna.pm
