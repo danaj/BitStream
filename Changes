@@ -9,7 +9,7 @@ Revision history for Perl extension Data::BitStream.
 	- Better behavior when doing bad reads.
 	- Unify a lot of error strings.
 	- Add generalized Fibonacci coding (order 2-16).
-	- Add additive and Goldbach G1 codes (from Fenwick's 2002 IEEE paper).
+	- Add additive and Goldbach G1/G2 codes from Fenwick's 2002 IEEE paper.
 
 0.04    9 Nov 2011
 	- Fix late regression in one of the tests, unpack "W" -> "C".
