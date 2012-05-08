@@ -24,6 +24,40 @@ sub _additive_gamma_len {
   $gammalen;
 }
 
+# Determine the best 2-ary sum over the basis p to use for this value.
+sub _find_best_pair {
+  my($p, $val, $pairsub) = @_;
+
+  # Determine how far to look in the basis
+  my $maxbasis = 0;
+  $maxbasis++ while exists $p->[$maxbasis+1] && $val > $p->[$maxbasis];
+
+  my @best_pair;
+  my $best_pair_len = 100000000;
+  my $startj = $maxbasis;
+  foreach my $i (0 .. $maxbasis) {
+    my $pi = $p->[$i];
+    # Since $pi is monotonically increasing, $pj starts out large and gets
+    # smaller as we search farther in.
+    $startj-- while $startj > 0 && ($pi + $p->[$startj]) > $val;
+    last if $startj < $i;
+    foreach my $j ($startj .. $maxbasis) {
+      my $pj = $p->[$j];
+      last if ($pi+$pj) > $val;
+      if (($pi+$pj) == $val) {
+        my($p1, $p2) = $pairsub->($i, $j);  # How i,j are stored
+        my $glen = _additive_gamma_len($p1) + _additive_gamma_len($p2);
+        #print "poss: $p->[$i] + $p->[$j] = $val.  Indices $i,$j.  Pair $p1,$p2.  Len $glen.\n";
+        if ($glen < $best_pair_len) {
+          @best_pair = ($p1, $p2);
+          $best_pair_len = $glen;
+        }
+      }
+    }
+  }
+  @best_pair;
+}
+
 # 2-ary additive code.
 #
 # The parameter comes in as an array.  Hence:
@@ -48,35 +82,10 @@ sub put_additive {
 
     # Expand the basis if necessary and possible.
     $sub->($p, $val) if defined $sub  &&  $p->[-1] < $val;
-    # Determine how far to look in the basis
-    my $maxbasis = 0;
-    $maxbasis++ while exists $p->[$maxbasis+1] && $val > $p->[$maxbasis];
-    #print "Max basis is $maxbasis, max value: $p->[$maxbasis]\n";
-    #print "     basis[$_] = $p->[$_]\n" for (0 .. $maxbasis);
 
-    # Determine the best code to use for this value.  Slow.
-    my @best_pair;
-    my $best_pair_len = 100000000;
-    my $startj = $maxbasis;
-    foreach my $i (0 .. $maxbasis) {
-      my $pi = $p->[$i];
-      # Since $pi is monotonically increasing, $pj starts out large and gets
-      # smaller as we search farther in.
-      $startj-- while $startj > 0 && ($pi + $p->[$startj]) > $val;
-      last if $startj < $i;
-      foreach my $j ($startj .. $maxbasis) {
-        my $pj = $p->[$j];
-        last if ($pi+$pj) > $val;
-        if (($pi+$pj) == $val) {
-          my $glen = _additive_gamma_len($i) + _additive_gamma_len($j-$i);
-          #print "poss: $p->[$i] + $p->[$j] = $val.  Indices $i,$j.  Pair $i, ", $j-$i, ".  Len $glen.\n";
-          if ($glen < $best_pair_len) {
-            @best_pair = ($i,$j-$i);
-            $best_pair_len = $glen;
-          }
-        }
-      }
-    }
+    my @best_pair = _find_best_pair($p, $val,
+                       sub { my $i = shift; my $j = shift;  ($i, $j-$i);  } );
+
     $self->error_code('range', $val) unless @best_pair;
     $self->put_gamma(@best_pair);
   }
@@ -232,16 +241,20 @@ if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime));
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
-    if ($maxval >= 0) {
-      push @{$p}, primes($p->[-1]+1, $maxval);
-    } else {
-      my $maxindex = -$maxval;
-      # No direct method, so expand until index reached
-      my $curlast = $p->[-1];
-      while (!defined $p->[$maxindex]) {
-        $curlast = int($curlast * 1.1) + 1000;
-        push @{$p}, primes($p->[-1]+1, $curlast);
-      }
+
+    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
+      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
+      my $n = ($maxval > -6)  ?  6  :  -$maxval;
+      $n++;   # Because we skip 2 in our basis.
+      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
+    }
+
+    # We want to ensure there is a prime >= $maxval on our list.
+    # Use maximal gap, so this loop ought to run exactly once.
+    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
+    while ($p->[-1] < $maxval) {
+      push @{$p}, primes($p->[-1]+1, $maxval+$adder);
+      $adder *= 2;  # Ensure success
     }
     1;
   };
@@ -340,7 +353,6 @@ sub get_goldbach_g1 {
 }
 
 ##########  Goldbach G2 codes modified for 0-based.
-# TODO: These are not working yet
 
 sub put_goldbach_g2 {
   my $self = shift;
@@ -352,61 +364,38 @@ sub put_goldbach_g2 {
     if ($v == 0) { $self->write(3, 6); next; }
     if ($v == 1) { $self->write(3, 7); next; }
 
-    my $val = $v+1;
+    my $val = $v+1;     # $val >= 3    (note ~0 will not encode)
 
     # Expand prime list as needed
     $expand_primes_sub->(\@_pbasis, $val) if $_pbasis[-1] < $val;
+    $self->error_code('assert', "Basis not expanded to $val") unless $_pbasis[-1] >= $val;
 
-    # Prime
-    if (( $val > 2) && $prime_test_sub->($val)) {
-      my $spindex = 0;  $spindex++ while $val > $_pbasis[$spindex];
-print "> $val is prime, encode as ", $spindex+1, " . 1\n";
-      $self->put_gamma($spindex+1);
-      $self->write(1, 1);
-      next;
+    # Check to see if $val is prime
+    if ( (($val%2) != 0) && (($val%3) != 0) ) {
+      # Not a multiple of 2 or 3, so look for it in _pbasis
+      my $spindex = 0;
+      $spindex += 200 while exists $_pbasis[$spindex+200]
+                         && $val > $_pbasis[$spindex+200];
+      $spindex++ while $val > $_pbasis[$spindex];
+      if ($val == $_pbasis[$spindex]) {
+        # We store the index (noting that value 3 is index 1 for us)
+        $self->put_gamma($spindex);
+        $self->write(1, 1);
+        next;
+      }
     }
 
     # Odd integer.
     if ( ($val % 2) == 1 ) {
-print "> $val is odd, encode as 1 . encode(", $val-1, ")\n";
       $self->write(1, 1);
       $val--;
     }
 
-
     # Encode the even value $val as the sum of two primes
-    my $p = \@_pbasis;
-    my $maxbasis = 0;
-    $maxbasis++ while exists $p->[$maxbasis+1] && $val > $p->[$maxbasis];
-    #print "Max basis is $maxbasis, max value: $p->[$maxbasis]\n";
-    #print "     basis[$_] = $p->[$_]\n" for (0 .. $maxbasis);
+    my @best_pair = _find_best_pair(\@_pbasis, $val,
+                       sub { my $i = shift; my $j = shift;  ($i+1,$j-$i+1); } );
 
-    # Determine the best code to use for this value.  Slow.
-    my @best_pair;
-    my $best_pair_len = 100000000;
-    my $startj = $maxbasis;
-    foreach my $i (0 .. $maxbasis) {
-      my $pi = $p->[$i];
-      # Since $pi is monotonically increasing, $pj starts out large and gets
-      # smaller as we search farther in.
-      $startj-- while $startj > 0 && ($pi + $p->[$startj]) > $val;
-      last if $startj < $i;
-      foreach my $j ($startj .. $maxbasis) {
-        my $pj = $p->[$j];
-        last if ($pi+$pj) > $val;
-        if (($pi+$pj) == $val) {
-          my $glen = _additive_gamma_len($i) + _additive_gamma_len($j-$i);
-          #print "poss: $p->[$i] + $p->[$j] = $val.  Indices $i,$j.  Pair $i, ", $j-$i, ".  Len $glen.\n";
-          if ($glen < $best_pair_len) {
-            @best_pair = ($i,$j-$i);
-            $best_pair_len = $glen;
-          }
-        }
-      }
-    }
     $self->error_code('range', $v) unless @best_pair;
-print "> $v is even, encoded as $p->[$best_pair[0]] + $p->[$best_pair[1]], indices $best_pair[0],$best_pair[1]\n";
-    $best_pair[0]++;
     $self->put_gamma(@best_pair);
   }
   1;
@@ -416,7 +405,52 @@ sub get_goldbach_g2 {
   my $self = shift;
   $self->error_stream_mode('read') if $self->writing;
 
-  my @vals = map { int($_/2)-1 }  $self->get_additive($expand_primes_sub, \@_pbasis, @_);
+  my $count = shift;
+  if    (!defined $count) { $count = 1;  }
+  elsif ($count  < 0)     { $count = ~0; }   # Get everything
+  elsif ($count == 0)     { return;      }
+
+  my @vals;
+  my $p = \@_pbasis;
+  $self->code_pos_start('Goldbach G2');
+  while ($count-- > 0) {
+    $self->code_pos_set;
+
+    # Look at the start 3 values
+    my $look = $self->read(3, 'readahead');
+    last unless defined $look;
+
+    if ($look == 6) {  $self->skip(3);  push @vals, 0;  next;  }
+    if ($look == 7) {  $self->skip(3);  push @vals, 1;  next;  }
+
+    my $val = -1;   # Take into account the +1 for 1-based
+
+    if ($look >= 4) {  # First bit is a 1  =>  Odd number
+      $val++;
+      $self->skip(1);
+    }
+
+    my ($i,$j) = $self->get_gamma(2);
+    $self->error_off_stream unless defined $i && defined $j;
+
+    my $pi;
+    my $pj;
+    if ($j == 0) {
+      $expand_primes_sub->(\@_pbasis, -$i) unless defined $p->[$i];
+      $pi = $p->[$i];
+      $pj = 0;
+    } else {
+      $i = $i - 1;
+      $j = $j + $i - 1;
+      $expand_primes_sub->(\@_pbasis, -$j) unless defined $p->[$j];
+      $pi = $p->[$i];
+      $pj = $p->[$j];
+    }
+    $self->error_code('overflow') unless defined $pi && defined $pj;
+
+    push @vals, $val+$pi+$pj;
+  }
+  $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
 
@@ -527,42 +561,139 @@ B<TODO>: Add description
 =head1 EXAMPLES
 
   use Data::BitStream;
+  use Data::BitStream::Code::Additive;
   my $stream = Data::BitStream->new;
-  my @array = (4, 2, 0, 3, 7, 72, 0, 1, 13);
-  my @basis = (0,1,3,5,7,8,10,16,22,28,34,40,46,52,58,64,70,76,82,88,94);
+  Data::BitStream::Code::Additive->meta->apply($stream);
 
+  my @array = (4, 2, 0, 3, 7, 72, 0, 1, 13);
+
+  $stream->put_goldbach_g1( @array );
+  $stream->rewind_for_read;
+  my @array2 = $stream->get_goldbach_g1( -1 );
+
+  my @seeds = (2, 16, 46);
+  $stream->erase_for_write;
+  $stream->put_additive_seeded( \@seeds, @array );
+  $stream->rewind_for_read;
+  my @array2 = $stream->get_additive_seeded( \@seeds, -1 );
+
+  my @basis = (0,1,3,5,7,8,10,16,22,28,34,40,46,52,58,64,70,76,82,88,94);
+  $stream->erase_for_write;
   $stream->put_additive( \@basis, @array );
   $stream->rewind_for_read;
-  my @array2 = $stream->get_additive( \@basis, -1);
-
-  # @array equals @array2
-
+  my @array2 = $stream->get_additive( \@basis, -1 );
 =head1 METHODS
 
 =head2 Provided Object Methods
 
 =over 4
 
-=item B< put_additive([@basis], $value) >
+=item B< put_goldbach_g1($value) >
 
-=item B< put_additive([@basis], @values) >
+=item B< put_goldbach_g1(@values) >
 
-Insert one or more values as Additive codes.  Returns 1.
+Insert one or more values as Goldbach G1 codes.  Returns 1.
+The Goldbach conjecture claims that any even number is the sum of two primes.
+This coding finds, for any value, the shortest pair of gamma-encoded prime
+indices that form C<2*($value+1)>.
 
-=item B< get_additive([@basis]) >
+=item B< get_goldbach_g1() >
 
-=item B< get_additive([@basis], $count) >
+=item B< get_goldbach_g1($count) >
+
+Decode one or more Goldbach G1 codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=item B< put_goldbach_g2($value) >
+
+=item B< put_goldbach_g2(@values) >
+
+Insert one or more values as Goldbach G2 codes.  Returns 1.  Uses a different
+coding than G1 that should yield slightly smaller codes for large values.
+
+=item B< get_goldbach_g2() >
+
+=item B< get_goldbach_g2($count) >
+
+Decode one or more Goldbach G2 codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=item B< put_additive_seeded(\@seeds, $value) >
+
+=item B< put_additive_seeded(\@seeds, @values) >
+
+Insert one or more values as Additive codes.  Returns 1.  Arbitrary values
+may be given as input, with the basis constructed as needed using the seeds.
+The seeds should be sorted and not contain duplicates.  They will typically
+be even numbers.  Examples include
+C<[2,16,46]>, C<[2,34,82]>, C<[2,52,154,896]>.  Each generated basis is
+cached, so successive put/get calls using the same seeds will run quickly.
+
+=item B< get_additive_seeded(\@seeds) >
+
+=item B< get_additive_seeded(\@seeds, $count) >
 
 Decode one or more Additive codes from the stream.  If count is omitted,
 one value will be read.  If count is negative, values will be read until
 the end of the stream is reached.  In scalar context it returns the last
 code read; in array context it returns an array of all codes read.
 
+=item B< generate_additive_basis($maxval, @seeds) >
+
+Construct an additive basis from C<0> to C<$maxval> using the given seeds.
+This allows construction of bases as shown in Fenwick's 2002 paper.  The
+basis is returned as an array.  The bases will be identical to those used
+with the C<get/put_additive_seeded> routines, though the latter allows the
+basis to be expanded as needed.
+
+=item B< put_additive(\@basis, $value) >
+
+=item B< put_additive(\@basis, @values) >
+
+Insert one or more values as 2-ary additive codes.  Returns 1.  An arbitrary
+basis to be used is provided.  This basis should be sorted and consist of
+non-negative integers.  For each value, all possible pairs C<(i,j)> are found
+where C<i + j = value>, with the pair having the smallest sum of Gamma
+encoding for C<i> and C<j> being chosen.  This pair is then Gamma encoded.
+If no two values in the basis sum to the requested value, a range error results.
+
+=item B< put_additive(sub { ... }, \@basis, @values) >
+
+Insert one or more values as 2-ary additive codes, as above.  The provided
+subroutine is used to expand the basis as needed if a value is too large for
+the current basis.  As before, the basis should be sorted and consist of
+non-negative integers.  It is assumed the basis is complete up to the last
+element (that is, the basis will only be expanded).  The argument to the sub
+is a reference to the basis array and a value.  When returned, the last entry
+of the basis should be greater than or equal to the value.
+
+=item B< get_additive(\@basis) >
+
+=item B< get_additive(\@basis, $count) >
+
+Decode one or more 2-ary additive codes from the stream.  If count is omitted,
+one value will be read.  If count is negative, values will be read until
+the end of the stream is reached.  In scalar context it returns the last
+code read; in array context it returns an array of all codes read.
+
+=item B< get_additive(sub { ... }, \@basis, @values) >
+
+Decode one or more values as 2-ary additive codes, as above.  The provided
+subroutine is used to expand the basis as needed if an index is too large for
+the current basis.  The argument to the sub is a reference to the basis array
+and a negative index.  When returned, index C<-$index> of the basis must be
+defined as a non-negative integer.
+
 =back
 
 =head2 Parameters
 
-The basis for the Additive code is passed as a array reference.
+Both the basis and seed arrays are passed as array references.  The basis
+array may be modified if a sub is given (since its job is to expand the basis).
 
 You can set up a tied array, and example code exists in the source for this.
 In general this will be slower than using a native array plus expansion subs.
@@ -575,6 +706,10 @@ In general this will be slower than using a native array plus expansion subs.
 
 =item B< write >
 
+=item B< get_gamma >
+
+=item B< put_gamma >
+
 These methods are required for the role.
 
 =back
@@ -584,6 +719,8 @@ These methods are required for the role.
 =over 4
 
 =item L<Data::BitStream::Code::Fibonacci>
+
+=item L<Data::BitStream::Code::Gamma>
 
 =item L<Math::Prime::XS>
 
