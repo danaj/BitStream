@@ -34,13 +34,8 @@ requires qw(read write put_unary get_unary);
 
 sub put_golomb {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $m = shift;
-  # Check if the first argument is actually a sub to use
-  if (ref $m eq 'CODE') {
-    $sub = $m;
-    $m = shift;
-  }
   $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 
   return( (defined $sub) ? $sub->($self, @_) : $self->put_unary(@_) ) if $m==1;
@@ -72,13 +67,8 @@ sub put_golomb {
 }
 sub get_golomb {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $m = shift;
-  # Check if the first argument is actually a sub to use
-  if (ref $m eq 'CODE') {
-    $sub = $m;
-    $m = shift;
-  }
   $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 
   return( (defined $sub) ? $sub->($self, @_) : $self->get_unary(@_) ) if $m==1;

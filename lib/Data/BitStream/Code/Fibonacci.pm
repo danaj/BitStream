@@ -303,7 +303,7 @@ sub get_fibgen {
       my $left = $fullcode >> $m;
       foreach my $c (reverse 0 .. $codelen-1) {
         $self->error_code('overflow') unless defined $fibm[$s];
-        $val += $fibm[$s]  if ($left & (1 << $c)); 
+        $val += $fibm[$s]  if ($left & (1 << $c));
         #my $adder = ($left & (1 << $c))  ?  $fibm[$s]  :  0;
         #print "s = $s  val = $val (added $adder)\n";
         $s++;

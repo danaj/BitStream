@@ -57,12 +57,8 @@ sub _adjust_k {
 
 sub put_arice {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    $sub = $k;
-    $k = shift;
-  }
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 
   # If small values are common (k often 0) then this will reduce the number
@@ -95,12 +91,8 @@ sub put_arice {
 }
 sub get_arice {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    $sub = $k;
-    $k = shift;
-  }
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 
   my $count = shift;

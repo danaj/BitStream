@@ -34,7 +34,6 @@ CODES:
 
 - Fenwick punctured codes
 
-- Goldbach and Ulam additive codes.  Probably not efficient
-  for anything large.
-
 - Thoughts on Huffman, arithmetic
+
+- inlclude additive codes by default

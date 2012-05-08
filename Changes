@@ -4,10 +4,12 @@ Revision history for Perl extension Data::BitStream.
 	- Make a couple 64-bit tests work properly with the 'xs' module on
 	  LLP64 systems.
 	- Add put_raw, from_raw uses it.
-	- String has custom to_raw and put_raw
-	- Inline C for decorrelator / predictor in image compression example
-	- Better behavior when doing bad reads
-	- Unify a lot of error strings
+	- String has custom to_raw and put_raw.
+	- Inline C for decorrelator / predictor in image compression example.
+	- Better behavior when doing bad reads.
+	- Unify a lot of error strings.
+	- Add generalized Fibonacci coding (order 2-16).
+	- Add additive and Goldbach G1 codes (from Fenwick's 2002 IEEE paper).
 
 0.04    9 Nov 2011
 	- Fix late regression in one of the tests, unpack "W" -> "C".

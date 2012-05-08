@@ -18,12 +18,8 @@ requires qw(read write put_unary get_unary);
 
 sub put_rice {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    $sub = $k;
-    $k = shift;
-  }
 
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
   return( (defined $sub) ? $sub->($self, @_) : $self->put_unary(@_) ) if $k==0;
@@ -39,12 +35,8 @@ sub put_rice {
 }
 sub get_rice {
   my $self = shift;
-  my $sub;
+  my $sub = shift if ref $_[0] eq 'CODE';
   my $k = shift;
-  if (ref $k eq 'CODE') {   # Check for sub as first parameter
-    $sub = $k;
-    $k = shift;
-  }
 
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
   return( (defined $sub) ? $sub->($self, @_) : $self->get_unary(@_) ) if $k==0;
