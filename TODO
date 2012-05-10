@@ -30,10 +30,8 @@ CODES:
 
 - Sayood's NF3 codes (Lossless Compression Handbook pages 67-70).
 
-- Ternary Comma
-
 - Fenwick punctured codes
 
 - Thoughts on Huffman, arithmetic
 
-- include additive codes by default
+- include additive and ternary comma codes by default
