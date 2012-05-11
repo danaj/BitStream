@@ -24,6 +24,8 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::Baer',
      'Data::BitStream::Code::BoldiVigna',
      'Data::BitStream::Code::ARice',
+     'Data::BitStream::Code::Additive',
+     'Data::BitStream::Code::Comma',
      'Data::BitStream::Code::StartStop';
 
 use Data::BitStream::XS 0.04;

@@ -24,6 +24,8 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::Baer',
      'Data::BitStream::Code::BoldiVigna',
      'Data::BitStream::Code::ARice',
+     'Data::BitStream::Code::Additive',
+     'Data::BitStream::Code::Comma',
      'Data::BitStream::Code::StartStop';
 
 has '_str' => (is => 'rw', default => '');
@@ -471,6 +473,16 @@ implementation.
 =item L<Data::BitStream::Code::ExponentialGolomb>
 
 =item L<Data::BitStream::Code::StartStop>
+
+=item L<Data::BitStream::Code::Baer>
+
+=item L<Data::BitStream::Code::BoldiVigna>
+
+=item L<Data::BitStream::Code::ARice>
+
+=item L<Data::BitStream::Code::Additive>
+
+=item L<Data::BitStream::Code::Comma>
 
 =back
 

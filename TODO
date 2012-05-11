@@ -32,6 +32,10 @@ CODES:
 
 - Fenwick punctured codes
 
-- Thoughts on Huffman, arithmetic
+- Stout codes
 
-- include additive and ternary comma codes by default
+- Yamamoto C(a,f)(n) codes (Yamamoto 2000)
+
+- Pigeon's taboo codes
+
+- Thoughts on Huffman, arithmetic

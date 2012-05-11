@@ -748,6 +748,10 @@ etc.
 
 =item L<Data::BitStream::Code::ARice>
 
+=item L<Data::BitStream::Code::Additive>
+
+=item L<Data::BitStream::Code::Comma>
+
 =back
 
 =head1 AUTHORS
