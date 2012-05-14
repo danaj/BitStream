@@ -30,6 +30,7 @@ my @encodings;
   EvenRodeh
   Levenstein
   Fibonacci
+  FibGen(12)
   Unary
   Unary1
   Baer(0)
@@ -44,6 +45,11 @@ my @encodings;
   ExpGolomb(3)
   StartStop(0-0-2-4-14)
   StartStepStop(3-2-20)
+  GoldbachG1
+  GoldbachG2
+  BlockTaboo(00)
+  BlockTaboo(111)
+  Comma(2)
   BinWord(20)
 |;
 @encodings = qw|Unary Gamma Delta Omega Fibonacci|;
@@ -150,7 +156,7 @@ sub time_list {
   # convert total uS time into ns/value
   $e1 = int(1000 * ($e1 / scalar @list));
   $e2 = int(1000 * ($e2 / scalar @list));
-  printf "   %-17s: %8d bytes  %6d ns encode  %6d ns decode\n", 
+  printf "   %-21s: %8d bytes %8d ns encode %8d ns decode\n", 
          $encoding, int(($len+7)/8), $e1, $e2;
   $tot_encode_time += $e1;
   $tot_decode_time += $e2;
