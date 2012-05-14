@@ -6,12 +6,30 @@ BEGIN {
   $Data::BitStream::Code::Escape::VERSION = '0.01';
 }
 
-our $CODEINFO = { package   => __PACKAGE__,
-                  name      => 'Additive',
-                  universal => 0,
-                  params    => 1,
-                  encodesub => sub {shift->put_additive([split(',',shift)], @_)},
-                  decodesub => sub {shift->get_additive([split(',',shift)], @_)}, };
+our $CODEINFO = [ { package   => __PACKAGE__,
+                    name      => 'Additive',
+                    universal => 0,
+                    params    => 1,
+                    encodesub => sub {shift->put_additive_seeded([split('-',shift)], @_)},
+                    decodesub => sub {shift->get_additive_seeded([split('-',shift)], @_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'GoldbachG1',
+                    universal => 1,
+                    params    => 0,
+                    encodesub => sub {shift->put_goldbach_g1(@_)},
+                    decodesub => sub {shift->get_goldbach_g1(@_)},
+                  },
+                  { package   => __PACKAGE__,
+                    name      => 'GoldbachG2',
+                    universal => 1,
+                    params    => 0,
+                    encodesub => sub {shift->put_goldbach_g2(@_)},
+                    decodesub => sub {shift->get_goldbach_g2(@_)},
+                  },
+                ];
+
+
 
 #use List::Util qw(max);
 use Mouse::Role;
@@ -30,29 +48,28 @@ sub _find_best_pair {
 
   # Determine how far to look in the basis
   my $maxbasis = 0;
-  $maxbasis++ while exists $p->[$maxbasis+1] && $val > $p->[$maxbasis];
+  $maxbasis+=100 while exists $p->[$maxbasis+101] && $val > $p->[$maxbasis+100];
+  $maxbasis++    while exists $p->[$maxbasis+  1] && $val > $p->[$maxbasis];
 
   my @best_pair;
   my $best_pair_len = 100000000;
-  my $startj = $maxbasis;
-  foreach my $i (0 .. $maxbasis) {
+  my $i = 0;
+  my $j = $maxbasis;
+  while ($i <= $j) {
     my $pi = $p->[$i];
-    # Since $pi is monotonically increasing, $pj starts out large and gets
-    # smaller as we search farther in.
-    $startj-- while $startj > 0 && ($pi + $p->[$startj]) > $val;
-    last if $startj < $i;
-    foreach my $j ($startj .. $maxbasis) {
-      my $pj = $p->[$j];
-      last if ($pi+$pj) > $val;
-      if (($pi+$pj) == $val) {
-        my($p1, $p2) = $pairsub->($i, $j);  # How i,j are stored
-        my $glen = _additive_gamma_len($p1) + _additive_gamma_len($p2);
-        #print "poss: $p->[$i] + $p->[$j] = $val.  Indices $i,$j.  Pair $p1,$p2.  Len $glen.\n";
-        if ($glen < $best_pair_len) {
-          @best_pair = ($p1, $p2);
-          $best_pair_len = $glen;
-        }
+    my $pj = $p->[$j];
+    my $sum = $pi + $pj;
+    if    ($sum < $val) {  $i++;  }
+    elsif ($sum > $val) {  $j--;  }
+    else {
+      my($p1, $p2) = $pairsub->($i, $j);  # How i,j are stored
+      my $glen = _additive_gamma_len($p1) + _additive_gamma_len($p2);
+      #print "poss: $pi + $pj = $val.  Indices $i,$j.  Pair $p1,$p2.  Len $glen.\n";
+      if ($glen < $best_pair_len) {
+        @best_pair = ($p1, $p2);
+        $best_pair_len = $glen;
       }
+      $i++;
     }
   }
   @best_pair;
@@ -149,7 +166,7 @@ my $expand_additive_basis = sub {
   my $n = $lastp;
 
   while (1) {
-    if ($maxval >= 0) {  last if  $maxval < $p->[-1];  }
+    if ($maxval >= 0) {  last if  $maxval <= $n;  }
     else              {  last if -$maxval < scalar @{$p};  }
     $n++;
     if (!@sums || ($sums[0] > $n)) {
