@@ -26,6 +26,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::ARice',
      'Data::BitStream::Code::Additive',
      'Data::BitStream::Code::Comma',
+     'Data::BitStream::Code::Taboo',
      'Data::BitStream::Code::StartStop';
 
 use Bit::Vector;
@@ -326,6 +327,8 @@ The following roles are included.
 =item L<Data::BitStream::Code::Additive>
 
 =item L<Data::BitStream::Code::Comma>
+
+=item L<Data::BitStream::Code::Taboo>
 
 =back
 

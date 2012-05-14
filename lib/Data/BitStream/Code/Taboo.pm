@@ -56,14 +56,35 @@ sub put_blocktaboo {
     }
     my $v = $val - $baseval;
 
-    foreach my $i (reverse 0 .. $lbase) {
-      my $factor = $base ** $i;
-      my $digit = int($v / $factor);
-      $v -= $digit * $factor;
+    # block-at-a-time way:
+    #   foreach my $i (reverse 0 .. $lbase) {
+    #     my $factor = $base ** $i;
+    #     my $digit = int($v / $factor);
+    #     $v -= $digit * $factor;
+    #     $digit++ if $digit >= $taboo;  # Make room for the taboo chunk
+    #     $self->write($bits, $digit);
+    #   }
+    #   $self->write($bits, $taboo);
+    # combine blocks into 32-bit writes:
+    my @stack = ($taboo);
+    foreach my $i (0 .. $lbase) {
+      my $digit = $v % $base;
       $digit++ if $digit >= $taboo;  # Make room for the taboo chunk
-      $self->write($bits, $digit);
+      push @stack, $digit;
+      $v = int($v / $base);
     }
-    $self->write($bits, $taboo);
+    my $cword = 0;
+    my $cbits = 0;
+    while (@stack) {
+      $cword = ($cword << $bits) | pop @stack;
+      $cbits += $bits;
+      if (($cbits + $bits) > 32) {
+        $self->write($cbits, $cword);
+        $cword = 0;
+        $cbits = 0;
+      }
+    }
+    $self->write($cbits, $cword) if $cbits;
   }
   1;
 }
@@ -94,19 +115,17 @@ sub get_blocktaboo {
     my $tval = $self->read($bits);
     last unless defined $tval;
 
-    if ($tval == $taboo) { push @vals, 0;  next; }
-
     my $val = 0;
     my $baseval = 0;
     my $n = 0;
-    do {
+    while ($tval != $taboo) {
       my $digit = ($tval > $taboo) ? $tval-1 : $tval;
       $val = $base * $val + $digit;
       $tval = $self->read($bits);
       $self->error_off_stream unless defined $tval;
       $baseval += $base**$n;
       $n++;
-    } while ($tval != $taboo);
+    }
     push @vals, $val+$baseval;
   }
   $self->code_pos_end;

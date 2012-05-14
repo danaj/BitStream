@@ -28,6 +28,7 @@ lib/Data/BitStream/Code/Levenstein.pm
 lib/Data/BitStream/Code/Omega.pm
 lib/Data/BitStream/Code/Rice.pm
 lib/Data/BitStream/Code/StartStop.pm
+lib/Data/BitStream/Code/Taboo.pm
 t/01-load.t
 t/02-basic.t
 t/05-coding-01.t

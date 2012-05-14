@@ -11,6 +11,7 @@ Revision history for Perl extension Data::BitStream.
 	- Add generalized Fibonacci coding (order 2-16).
 	- Add additive and Goldbach G1/G2 codes from Fenwick's 2002 IEEE paper.
 	- Add comma codes (including ternary comma codes e.g. Fenwick 1996).
+	- Add block-based taboo codes (Pigeon 2001).
 
 0.04    9 Nov 2011
 	- Fix late regression in one of the tests, unpack "W" -> "C".

@@ -26,6 +26,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::ARice',
      'Data::BitStream::Code::Additive',
      'Data::BitStream::Code::Comma',
+     'Data::BitStream::Code::Taboo',
      'Data::BitStream::Code::StartStop';
 
 has '_str' => (is => 'rw', default => '');
@@ -483,6 +484,8 @@ implementation.
 =item L<Data::BitStream::Code::Additive>
 
 =item L<Data::BitStream::Code::Comma>
+
+=item L<Data::BitStream::Code::Taboo>
 
 =back
 

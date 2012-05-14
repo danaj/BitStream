@@ -752,6 +752,8 @@ etc.
 
 =item L<Data::BitStream::Code::Comma>
 
+=item L<Data::BitStream::Code::Taboo>
+
 =back
 
 =head1 AUTHORS

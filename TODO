@@ -28,7 +28,9 @@
 
 CODES:
 
-- Sayood's NF3 codes (Lossless Compression Handbook pages 67-70).
+- Sayood's NF3 codes (Lossless Compression Handbook pages 67-70).  Generalized
+  Fibonacci code, with terminator change.  Can be a little shorter than the
+  C2 codes, and he claims they're faster to encode/decode.
 
 - Fenwick punctured codes
 
@@ -36,6 +38,9 @@ CODES:
 
 - Yamamoto C(a,f)(n) codes (Yamamoto 2000)
 
-- Pigeon's taboo codes
+- Pigeon's unconstrained taboo codes.  Described in taboo.ps.  Block codes are
+  done.  Since the unconstrained codes have identical lengths to generalized
+  Fibonacci codes, and these are efficiently implemented here and in XS, I
+  don't think there is a pressing need to do these.
 
 - Thoughts on Huffman, arithmetic
