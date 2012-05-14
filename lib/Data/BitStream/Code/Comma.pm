@@ -30,19 +30,27 @@ sub put_comma {
     $self->error_code('zeroval') unless defined $val and $val >= 0;
 
     if ($val == 0) { $self->write(   $bits, $comma );  next; }  # c
-    if ($val == 1) { $self->write( 2*$bits, $comma );  next; }  # 0c
 
-    # TODO: Optimization: write in chunks 32-bits or smaller.  Most cases would
-    #       use a single call to write instead of 2+.
-    my $v = $val-1;
-    my $lbase = int( log($v) / log($base) );
-    foreach my $i (reverse 0 .. $lbase) {
-      my $factor = $base ** $i;
-      my $digit = int($v / $factor);
-      $v -= $digit * $factor;
-      $self->write($bits, $digit);
+    my $v = $val;
+    my @stack = ($comma);;
+    while ($v > 0) {
+      push @stack, $v % $base;
+      $v = int($v / $base);
     }
-    $self->write($bits, $comma);
+    # Write the stack.  Simple way:
+    #    $self->write($bits, pop @stack) while @stack;
+    my $cword = 0;
+    my $cbits = 0;
+    while (@stack) {
+      $cword = ($cword << $bits) | pop @stack;
+      $cbits += $bits;
+      if (($cbits + $bits) > 32) {
+        $self->write($cbits, $cword);
+        $cword = 0;
+        $cbits = 0;
+      }
+    }
+    $self->write($cbits, $cword) if $cbits;
   }
   1;
 }
@@ -69,15 +77,13 @@ sub get_comma {
     my $tval = $self->read($bits);
     last unless defined $tval;
 
-    if ($tval == $comma) { push @vals, 0;  next; }
-
     my $val = 0;
-    do {
+    while ($tval != $comma) {
       $val = $base * $val + $tval;
       $tval = $self->read($bits);
       $self->error_off_stream unless defined $tval;
-    } while ($tval != $comma);
-    push @vals, $val+1;
+    }
+    push @vals, $val;
   }
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
@@ -112,17 +118,27 @@ base 3 (hence why it is called ternary comma).  Example for ternary comma:
 
       value        code          binary         bits
           0           c                    11    2
-          1          0c                  0011    4
-          2          1c                  0111    4
-          3          2c                  1011    4
-          4         10c                010011    6
-  ..      9         22c                101011    6
-  ..     64       2100c            1001000011   10
-  ..  10000  111201100c  01010110000101000011   20
+          1          1c                  0111    4
+          2          2c                  1011    4
+          3         10c                010011    6
+          4         11c                010111    6
+  ..      8         22c                101011    6
+          9        100c              01000011    8
+  ..     64       2101c            1001000111   10
+  ..  10000  111201101c  01010110000101000111   20
 
 Comma codes using larger chunks compact larger numbers better, but the
 terminator also grows.  This means smaller values take more bits to encode,
 and all codes have many wasted bits after the information.
+
+Also note that skipping the leading C<0>s for all codes results in a large
+waste of space.  For instance, the codes C<0xc>, C<0xxc>, C<0xxxc>, etc. are
+all not used, even though they are uniquely decodable.  Note that Fenwick's
+table 6 (p6) shows C<0c> being used, but no other leading zero.  This is not
+the case in Sayood's table 3.19 (p71) where no entry has a leading zero.
+
+These codes are a special case of the block-based taboo codes (Pigeon 2001).
+The taboo codes fully utilize all the bits.
 
 =head1 METHODS
 
@@ -177,6 +193,8 @@ These methods are required for the role.
 =item Peter Fenwick, "Punctured Elias Codes for variable-length coding of the integers", Technical Report 137, Department of Computer Science, University of Auckland, December 1996.
 
 =item Peter Fenwick,  “Ziv-Lempel encoding with multi-bit flags”, Proc. Data Compression Conference (IEEE DCC), Snowbird, Utah, pp 138–147, March 1993.
+
+=item Khalid Sayood (editor), "Lossless Compression Handbook", 2003.
 
 =back
 
