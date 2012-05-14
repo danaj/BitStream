@@ -105,6 +105,8 @@ sub encoding_list {
               SSS(3-3-99) SS(1-0-1-0-2-12-99)
               ARice(9)
             |;
+            # TODO: Need these in XS:
+            # Goldbach1 Goldbach2 Comma(2) Comma(3) BTaboo(010)
   unshift @e, "Binword($maxbits)";
   @e; 
 }
@@ -145,6 +147,10 @@ my %esubs = (
   'unary1' => sub { my $stream=shift; my $p=shift; $stream->put_unary1(@_) },
   'golomb' => sub { my $stream=shift; my $p=shift; $stream->put_golomb($p,@_) },
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->put_rice($p,@_) },
+  'goldbach1'=>sub{ my $stream=shift; my $p=shift; $stream->put_goldbach_g1(@_) },
+  'goldbach2'=>sub{ my $stream=shift; my $p=shift; $stream->put_goldbach_g2(@_) },
+  'btaboo' => sub { my $stream=shift; my $p=shift; $stream->put_blocktaboo($p,@_) },
+  'comma'  => sub { my $stream=shift; my $p=shift; $stream->put_comma($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->put_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->put_startstop([split('-',$p)],@_) },
   'escape' => sub { my $stream=shift; my $p=shift; $stream->put_escape([split('-',$p)],@_) },
@@ -175,6 +181,10 @@ my %dsubs = (
   'unary1' => sub { my $stream=shift; my $p=shift; $stream->get_unary1(@_) },
   'golomb' => sub { my $stream=shift; my $p=shift; $stream->get_golomb($p,@_) },
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->get_rice($p,@_) },
+  'goldbach1'=>sub{ my $stream=shift; my $p=shift; $stream->get_goldbach_g1(@_) },
+  'goldbach2'=>sub{ my $stream=shift; my $p=shift; $stream->get_goldbach_g2(@_) },
+  'btaboo' => sub { my $stream=shift; my $p=shift; $stream->get_blocktaboo($p,@_) },
+  'comma'  => sub { my $stream=shift; my $p=shift; $stream->get_comma($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->get_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->get_startstop([split('-',$p)],@_) },
   'escape' => sub { my $stream=shift; my $p=shift; $stream->get_escape([split('-',$p)],@_) },
