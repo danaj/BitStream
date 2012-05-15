@@ -32,7 +32,7 @@ sub put_comma {
     if ($val == 0) { $self->write(   $bits, $comma );  next; }  # c
 
     my $v = $val;
-    my @stack = ($comma);;
+    my @stack = ($comma);
     while ($v > 0) {
       push @stack, $v % $base;
       $v = int($v / $base);

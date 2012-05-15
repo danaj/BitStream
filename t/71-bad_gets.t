@@ -12,11 +12,13 @@ my @encodings = qw|
               GammaGolomb(3) GammaGolomb(128) ExpGolomb(5)
               BoldiVigna(2) Baer(0) Baer(-2) Baer(2)
               StartStepStop(3-3-99) StartStop(1-0-1-0-2-12-99)
+              Comma(2) Comma(5)
+              BlockTaboo(10) BlockTaboo(101001)
               ARice(2)
             |;
 
-plan tests =>   3*11*3 - 2*3
-              + 3*4*3
+plan tests =>   3*13*3 - 2*3
+              + 3*5*3
               + 5*3
               + 1*3
               + scalar @encodings * 2
@@ -34,7 +36,7 @@ foreach my $nzeros (16,48,280)
   $s->erase_for_write;
   $s->write($nzeros, 0);
   $s->rewind_for_read;
-  foreach my $code (qw|Unary Gamma Delta Fibonacci Rice(2) Golomb(10) GammaGolomb(3) ExpGolomb(5) ARice(2) BoldiVigna(2) Binword(32)|) {
+  foreach my $code (qw|Unary Gamma Delta Fibonacci Rice(2) Golomb(10) GammaGolomb(3) ExpGolomb(5) ARice(2) BoldiVigna(2) Binword(32) Comma(2) BlockTaboo(1111)|) {
     next if $code =~ /Binword/ and $nzeros > 32;
     # Set position to a little way in
     $s->rewind;  $s->skip(3);  die "Position error" unless $s->pos == 3;
@@ -52,11 +54,11 @@ foreach my $nzeros (16,48,280)
   $s->write(32, 0xFFFFFFFF) for (1 .. $nzeros/32);
   $s->write($nzeros % 32, 0xFFFFFFFF);
   $s->rewind_for_read;
-  foreach my $code (qw|Unary1 Omega Levenstein Baer(-2)|) {
+  foreach my $code (qw|Unary1 Omega Levenstein Baer(-2) BlockTaboo(100)|) {
     # Set position to a little way in
     $s->rewind;  $s->skip(3);  die "Position error" unless $s->pos == 3;
     eval { $s->code_get($code); };
-    if ( ($nzeros > 32) && ($code =~ /Omega/i) ) {
+    if ( ($nzeros > 32) && ($code =~ /Omega|BlockTaboo/i) ) {
       like($@, qr/code error/i, "$code off $nzeros-bit stream");
     } else {
       like($@, qr/read off end of stream/i, "$code off $nzeros-bit stream");

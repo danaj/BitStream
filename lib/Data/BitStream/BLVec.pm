@@ -147,6 +147,8 @@ _generate_generic_getput('', 'gammagolomb');
 _generate_generic_getput('', 'expgolomb');
 _generate_generic_getput('', 'baer');
 _generate_generic_getput('', 'boldivigna');
+_generate_generic_getput('', 'comma');
+_generate_generic_getput('', 'blocktaboo');
 _generate_generic_getput('', 'binword');
 
 # The XS module understands subs, so we can map these directly

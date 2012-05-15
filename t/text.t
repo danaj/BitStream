@@ -41,6 +41,10 @@ my @codes = qw|
   StartStop(0-0-2-3-9)
   StartStop(3-2-9)
   StartStepStop(3-2-13)
+  Comma(2)
+  Comma(5)
+  BlockTaboo(00)
+  BlockTaboo(1001)
   BinWord(15)
 |;
 

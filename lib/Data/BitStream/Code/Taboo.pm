@@ -125,6 +125,7 @@ sub get_blocktaboo {
       $self->error_off_stream unless defined $tval;
       $baseval += $base**$n;
       $n++;
+      $self->error_code('overflow') if $baseval > ~0;
     }
     push @vals, $val+$baseval;
   }

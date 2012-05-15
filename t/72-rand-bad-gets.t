@@ -11,6 +11,7 @@ my @encodings = qw|
               Rice(2) Rice(9)
               GammaGolomb(3) GammaGolomb(128) ExpGolomb(5)
               Baer(0) Baer(-2) Baer(2)
+              Comma(2) Comma(6) BlockTaboo(01) BlockTaboo(10010)
               Binword(32)
               ARice(2)
             |;

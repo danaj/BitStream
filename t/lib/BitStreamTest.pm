@@ -103,6 +103,8 @@ sub encoding_list {
               DeltaGol(21) OmegaGol(21) FibGol(21) ERGol(890)
               BVZeta(2) Baer(0) Baer(-2) Baer(2)
               SSS(3-3-99) SS(1-0-1-0-2-12-99)
+              Comma(2) Comma(3)
+              BlockTaboo(00) BlockTaboo(10011)
               ARice(9)
             |;
             # TODO: Need these in XS:
@@ -149,7 +151,7 @@ my %esubs = (
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->put_rice($p,@_) },
   'goldbach1'=>sub{ my $stream=shift; my $p=shift; $stream->put_goldbach_g1(@_) },
   'goldbach2'=>sub{ my $stream=shift; my $p=shift; $stream->put_goldbach_g2(@_) },
-  'btaboo' => sub { my $stream=shift; my $p=shift; $stream->put_blocktaboo($p,@_) },
+  'blocktaboo' => sub { my $stream=shift; my $p=shift; $stream->put_blocktaboo($p,@_) },
   'comma'  => sub { my $stream=shift; my $p=shift; $stream->put_comma($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->put_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->put_startstop([split('-',$p)],@_) },
@@ -183,7 +185,7 @@ my %dsubs = (
   'rice'   => sub { my $stream=shift; my $p=shift; $stream->get_rice($p,@_) },
   'goldbach1'=>sub{ my $stream=shift; my $p=shift; $stream->get_goldbach_g1(@_) },
   'goldbach2'=>sub{ my $stream=shift; my $p=shift; $stream->get_goldbach_g2(@_) },
-  'btaboo' => sub { my $stream=shift; my $p=shift; $stream->get_blocktaboo($p,@_) },
+  'blocktaboo' => sub { my $stream=shift; my $p=shift; $stream->get_blocktaboo($p,@_) },
   'comma'  => sub { my $stream=shift; my $p=shift; $stream->get_comma($p,@_) },
   'sss'    => sub { my $stream=shift; my $p=shift; $stream->get_startstepstop([split('-',$p)],@_) },
   'ss'     => sub { my $stream=shift; my $p=shift; $stream->get_startstop([split('-',$p)],@_) },
