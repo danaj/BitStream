@@ -58,8 +58,10 @@ foreach my $nzeros (16,48,280)
     # Set position to a little way in
     $s->rewind;  $s->skip(3);  die "Position error" unless $s->pos == 3;
     eval { $s->code_get($code); };
-    if ( ($nzeros > 32) && ($code =~ /Omega|BlockTaboo/i) ) {
+    if      ( ($nzeros > 32) && ($code =~ /Omega/i) ) {
       like($@, qr/code error/i, "$code off $nzeros-bit stream");
+    } elsif ( ($nzeros > 32) && ($code =~ /BlockTaboo/i) ) {
+      like($@, qr/(code error|read off end of stream)/i, "$code off $nzeros-bit stream");
     } else {
       like($@, qr/read off end of stream/i, "$code off $nzeros-bit stream");
     }

@@ -121,11 +121,11 @@ sub get_blocktaboo {
     while ($tval != $taboo) {
       my $digit = ($tval > $taboo) ? $tval-1 : $tval;
       $val = $base * $val + $digit;
-      $tval = $self->read($bits);
-      $self->error_off_stream unless defined $tval;
       $baseval += $base**$n;
       $n++;
-      $self->error_code('overflow') if $baseval > ~0;
+      $self->error_code('overflow') if ($val+$baseval) > ~0;
+      $tval = $self->read($bits);
+      $self->error_off_stream unless defined $tval;
     }
     push @vals, $val+$baseval;
   }
