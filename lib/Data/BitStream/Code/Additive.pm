@@ -249,11 +249,50 @@ sub get_additive_seeded {
 my $expand_primes_sub;
 my $prime_test_sub;
 
-# We could also use:
-#    Math::Prime::FastSieve
-#    Math::Primality
-#    Math::Prime::TiedArray
-# if we find any of them.  The first two ought to be fast.
+# Performance:
+#
+#    1. Data::BitStream::XS
+#
+#       Whether used directly or seamlessly routed via BLVec, this is by far
+#       the fastest solution.  20-100x faster than the others.  Parts:
+#
+#        - fast prime basis formation (about 2x for large number encoding).
+#
+#        - fast best-pair search (huge speedup for large number encoding).
+#
+#        - generic coding speedup similar to XS effect on other codes.
+#
+#    2. Math::Prime::XS or another XS module from CPAN.
+#
+#       About a 2x speedup for large numbers (e.g. >100k), almost no change
+#       for smaller (e.g. less than 64k) numbers.  This radically speeds up
+#       the Goldbach basis generation, but does nothing for the best-pair
+#       search.
+#
+#    3. Pure Perl (this module)
+#
+# Searching for all sum pairs through a large array (e.g. 1.5M primes for
+# n=10_000_000) is not going to be very fast unless a different implementation
+# is used (massivily parallel such as GPU would map well, as would using
+# extra memory to store the best codes and working sums).  If encoding speed
+# is a goal, then another code is recommended.
+#
+# In terms of raw performance generating primes the ordering on my machine:
+#    984/s  Math::Prime::XS
+#    165/s  Data::BitStream::XS
+#      7/s  Pure Perl
+#      1/s  Math::Primality
+# noting that Math::Primality is really specializing in very large numbers,
+# and that MPXS is sieving while the others are walking primes.  Sieving takes
+# extra memory and will be less efficient to add one more number at the end,
+# but it is very good when adding many primes, as the performance above shows.
+#
+# Math::Prime::FastSieve is claimed to be faster than Math::Prime::XS.  It
+# doesn't build on my machine, and the interface doesn't seem to map well to
+# our usage.  I don't think the prime generation is a bottleneck once we've
+# gone to any of the faster implementations.  At that point the best-pair
+# search is the time consumer.
+
 if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime)); 1;}) {
   $expand_primes_sub = sub {
     my $p = shift;
@@ -272,6 +311,21 @@ if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime));
     while ($p->[-1] < $maxval) {
       push @{$p}, primes($p->[-1]+1, $maxval+$adder);
       $adder *= 2;  # Ensure success
+    }
+    1;
+  };
+  $prime_test_sub = sub { is_prime(shift); };
+} elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(next_prime is_prime)); 1;}) {
+  # Just in case we find a newer version of DBXS but are still running this
+  # code instead of using the Goldbach methods that it has.
+  $expand_primes_sub = sub {
+    my $p = shift;
+    my $maxval = shift;
+    if ($maxval >= 0) {
+      push @{$p}, next_prime($p->[-1]) while $p->[-1] < $maxval;
+    } else {
+      my $maxindex = -$maxval;
+      push @{$p}, next_prime($p->[-1]) while !defined $p->[$maxindex];
     }
     1;
   };
@@ -302,14 +356,17 @@ if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime));
     1;
   }
 
+  # Return the next prime larger than some integer.
+  # Works just like Math::Primality::next_prime() and DBXS::next_prime().
   my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
   sub _next_prime {
     my $x = shift;
-    if ($x <= 29) {
-      my @small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29);
-      my $spindex = 0;  $spindex++ while $x > $small_primes[$spindex];
+    if ($x <= 30) {
+      my @small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31);
+      my $spindex = 0;  $spindex++ while $x >= $small_primes[$spindex];
       return $small_primes[$spindex];
     }
+    $x += 1;
     # Search starting at L*k0 + indices[in]
     my $L = 30;
     my $k0 = int($x/$L);
@@ -327,10 +384,10 @@ if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime));
     my $p = shift;
     my $maxval = shift;
     if ($maxval >= 0) {
-      push @{$p}, _next_prime($p->[-1]+2) while $p->[-1] < $maxval;
+      push @{$p}, _next_prime($p->[-1]) while $p->[-1] < $maxval;
     } else {
       my $maxindex = -$maxval;
-      push @{$p}, _next_prime($p->[-1]+2) while !defined $p->[$maxindex];
+      push @{$p}, _next_prime($p->[-1]) while !defined $p->[$maxindex];
     }
     1;
   };

@@ -17,7 +17,7 @@ my @encodings = qw|
               ARice(2)
             |;
 
-plan tests =>   3*13*3 - 2*3
+plan tests =>   3*12*3 - 2*3
               + 3*5*3
               + 5*3
               + 1*3
@@ -36,7 +36,7 @@ foreach my $nzeros (16,48,280)
   $s->erase_for_write;
   $s->write($nzeros, 0);
   $s->rewind_for_read;
-  foreach my $code (qw|Unary Gamma Delta Fibonacci Rice(2) Golomb(10) GammaGolomb(3) ExpGolomb(5) ARice(2) BoldiVigna(2) Binword(32) Comma(2) BlockTaboo(1111)|) {
+  foreach my $code (qw|Unary Gamma Delta Fibonacci Rice(2) Golomb(10) GammaGolomb(3) ExpGolomb(5) ARice(2) BoldiVigna(2) Binword(32) Comma(2)|) {
     next if $code =~ /Binword/ and $nzeros > 32;
     # Set position to a little way in
     $s->rewind;  $s->skip(3);  die "Position error" unless $s->pos == 3;
@@ -153,3 +153,4 @@ foreach my $nzeros (16,48,280)
 # TODO: off stream after base
 # TODO: invalid string (XS allows 0 and anything
 # TODO: EvenRodeh, StartStepStop, StartStop
+# TODO: Better off-stream tests for Omega and BlockTaboo
