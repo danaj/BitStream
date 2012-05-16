@@ -62,7 +62,7 @@ maxbits to 32 if it looks like it won't work with 64.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2012 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.1 or,

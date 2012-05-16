@@ -26,11 +26,19 @@
 - tie to a file to avoid holding everything in memory.
   Either File::Map or PerlIO :mmap or Sys::Mmap
 
+- ARice: use reference for parameter k.
+
+- Documentation for ARice.
+
+- range testing for comma and block taboo codes
+
 CODES:
 
 - Sayood's NF3 codes (Lossless Compression Handbook pages 67-70).  Generalized
   Fibonacci code, with terminator change.  Can be a little shorter than the
   C2 codes, and he claims they're faster to encode/decode.
+
+- Adaptive Golomb.
 
 - Fenwick punctured codes
 

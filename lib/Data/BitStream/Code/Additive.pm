@@ -316,7 +316,7 @@ if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime));
   };
   $prime_test_sub = sub { is_prime(shift); };
 } elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(next_prime is_prime)); 1;}) {
-  # Just in case we find a newer version of DBXS but are still running this
+  # Just in case we find a new version of DBXS but are still running this
   # code instead of using the Goldbach methods that it has.
   $expand_primes_sub = sub {
     my $p = shift;
@@ -445,7 +445,7 @@ sub put_goldbach_g2 {
     $self->error_code('assert', "Basis not expanded to $val") unless $_pbasis[-1] >= $val;
 
     # Check to see if $val is prime
-    if ( (($val%2) != 0) && (($val%3) != 0) ) {
+    if ( (($val%2) != 0) && (($val == 3) || (($val%3) != 0)) ) {
       # Not a multiple of 2 or 3, so look for it in _pbasis
       my $spindex = 0;
       $spindex += 200 while exists $_pbasis[$spindex+200]
@@ -507,22 +507,18 @@ sub get_goldbach_g2 {
     my ($i,$j) = $self->get_gamma(2);
     $self->error_off_stream unless defined $i && defined $j;
 
-    my $pi;
-    my $pj;
+    my $maxindex = ($j == 0)  ?  $i  :  $j + ($i-1) - 1;
+    $expand_primes_sub->(\@_pbasis, -$maxindex) unless defined $p->[$maxindex];
+    $self->error_code('overflow') unless defined $p->[$maxindex];
     if ($j == 0) {
-      $expand_primes_sub->(\@_pbasis, -$i) unless defined $p->[$i];
-      $pi = $p->[$i];
-      $pj = 0;
+      $val += $p->[$i];
     } else {
       $i = $i - 1;
       $j = $j + $i - 1;
-      $expand_primes_sub->(\@_pbasis, -$j) unless defined $p->[$j];
-      $pi = $p->[$i];
-      $pj = $p->[$j];
+      $val += $p->[$i] + $p->[$j];
     }
-    $self->error_code('overflow') unless defined $pi && defined $pj;
 
-    push @vals, $val+$pi+$pj;
+    push @vals, $val;
   }
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
