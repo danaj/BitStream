@@ -201,12 +201,8 @@ sub get_unary {
         #  24us:  substr($$rvec,$wpos*4,32) eq "\x00 .... \x00"
         #  12us:  tr with 128 then 32
 
-        {
-          # Reading off the end of a stream will cause these warnings.
-          no warnings qw(uninitialized substr);
-          $wpos += 32 while ( (($wpos+30) < $lastwpos) && (substr($$rvec,$wpos*4,128) =~ tr/\000/\000/ == 128) );
-          $wpos += 8 while ( (($wpos+6) < $lastwpos) && (substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32) );
-        }
+        $wpos += 32 while ( (($wpos+31) < $lastwpos) && (substr($$rvec,$wpos*4,128) =~ tr/\000/\000/ == 128) );
+        $wpos += 8 while ( (($wpos+7) < $lastwpos) && (substr($$rvec,$wpos*4,32) =~ tr/\000/\000/ == 32) );
         $wpos++ while ($wpos <= $lastwpos && vec($$rvec, $wpos, 32) == 0);
         $v = vec($$rvec, $wpos, 32);
         $onepos += 32*($wpos - $startwpos);
