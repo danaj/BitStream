@@ -57,7 +57,7 @@ sub _adjust_k {
 
 sub put_arice {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $k = shift;
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 
@@ -91,7 +91,7 @@ sub put_arice {
 }
 sub get_arice {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $k = shift;
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 

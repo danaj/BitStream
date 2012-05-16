@@ -90,7 +90,7 @@ sub _find_best_pair {
 sub put_additive {
   my $self = shift;
   $self->error_stream_mode('write') unless $self->writing;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $p = shift;
   $self->error_code('param', 'p must be an array') unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
 
@@ -112,7 +112,7 @@ sub put_additive {
 sub get_additive {
   my $self = shift;
   $self->error_stream_mode('read') if $self->writing;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $p = shift;
   $self->error_code('param', 'p must be an array') unless (ref $p eq 'ARRAY') && scalar @$p >= 1;
   my $count = shift;

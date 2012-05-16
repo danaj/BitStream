@@ -34,7 +34,7 @@ requires qw(read write put_unary get_unary);
 
 sub put_golomb {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $m = shift;
   $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 
@@ -67,7 +67,7 @@ sub put_golomb {
 }
 sub get_golomb {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $m = shift;
   $self->error_code('param', 'm must be >= 1') unless $m >= 1;
 

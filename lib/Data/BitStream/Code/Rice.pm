@@ -18,7 +18,7 @@ requires qw(read write put_unary get_unary);
 
 sub put_rice {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
   my $k = shift;
 
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
@@ -35,7 +35,7 @@ sub put_rice {
 }
 sub get_rice {
   my $self = shift;
-  my $sub = shift if ref $_[0] eq 'CODE';
+  my $sub = shift if ref $_[0] eq 'CODE';  ## no critic  ## no critic
   my $k = shift;
 
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
