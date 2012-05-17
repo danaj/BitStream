@@ -220,10 +220,6 @@ These methods are required for the role.
 
 =back
 
-=head1 BUGS
-
-The all-bits-on sequence C<~0> does not encode correctly.
-
 =head1 AUTHORS
 
 Dana Jacobsen <dana@acm.org>

@@ -278,22 +278,63 @@ my $prime_test_sub;
 # is a goal, then another code is recommended.
 #
 # In terms of raw performance generating primes the ordering on my machine:
+#   1200/s  Math::Prime::FastSieve
 #    984/s  Math::Prime::XS
 #    165/s  Data::BitStream::XS
 #      7/s  Pure Perl
 #      1/s  Math::Primality
 # noting that Math::Primality is really specializing in very large numbers,
-# and that MPXS is sieving while the others are walking primes.  Sieving takes
-# extra memory and will be less efficient to add one more number at the end,
-# but it is very good when adding many primes, as the performance above shows.
+# and that MPFS and MPXS are sieving while the others are walking primes.
+# Sieving takes extra memory (not that much compared to the prime list) and
+# will be less efficient to add one more number at the end, but it is very
+# good when adding many primes, as the performance above shows.
 #
-# Math::Prime::FastSieve is claimed to be faster than Math::Prime::XS.  It
-# doesn't build on my machine, and the interface doesn't seem to map well to
-# our usage.  I don't think the prime generation is a bottleneck once we've
-# gone to any of the faster implementations.  At that point the best-pair
-# search is the time consumer.
+# While Math::Prime::FastSieve's interface doesn't map perfectly to our use,
+# it is fast enough to make it work out.  It still leaves the best-pair
+# search as a bottleneck.  Unfortunately I think the module needs a little more
+# development time.
+#
+# The end result of all this is as described in the first paragraph.  Using
+# the Pure Perl implementation is fine for small values, but will be quite
+# slow as the values grow (e.g. 1M).  Switching to any of the fast prime
+# generators will double or more the speed.  Using DBXS is 20-100x faster.
+#
+# I also plan on looking into a sieve for DBXS.
 
-if (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime)); 1;}) {
+# Don't even try to use MPFS, so we don't infect ourselves with the
+# Inline M51 warning.
+if (0 && eval {require Math::Prime::FastSieve; 1;}) {
+
+  my $fs_sieve;
+  my $fs_size;
+  $expand_primes_sub = sub {
+    my $p = shift;
+    my $maxval = shift;
+
+    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
+      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
+      my $n = ($maxval > -6)  ?  6  :  -$maxval;
+      $n++;   # Because we skip 2 in our basis.
+      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
+    }
+
+    # We want to ensure there is a prime >= $maxval on our list.
+    # Use maximal gap, so this loop ought to run exactly once.
+    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
+    while ($p->[-1] < $maxval) {
+      if ( (!defined $fs_size) || ($fs_size < ($maxval+$adder)) ) {
+        $fs_size = $maxval + $adder + 10000;
+        undef $fs_sieve;
+        $fs_sieve = Math::Prime::FastSieve::Sieve->new( $fs_size );
+      }
+      push @{$p}, @{$fs_sieve->ranged_primes($p->[-1]+1, $maxval+$adder)};
+      $adder *= 2;  # Ensure success
+    }
+    1;
+  };
+  $prime_test_sub = sub { $fs_sieve->isprime(shift); };
+
+} elsif (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime)); 1;}) {
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
@@ -624,9 +665,7 @@ A role written for L<Data::BitStream> that provides get and set methods for
 Additive codes.  The role applies to a stream object.
 
 If you use the Goldbach codes for inputs more than ~1000, I highly recommend
-installing L<Math::Prime::XS> for better performance.
-
-B<TODO>: Add description
+installing L<Data::BitStream::XS> or L<Math::Prime::XS> for better performance.
 
 =head1 EXAMPLES
 
@@ -681,7 +720,8 @@ code read; in array context it returns an array of all codes read.
 =item B< put_goldbach_g2(@values) >
 
 Insert one or more values as Goldbach G2 codes.  Returns 1.  Uses a different
-coding than G1 that should yield slightly smaller codes for large values.
+coding than G1 that should yield slightly smaller codes for large values.  They
+will also be faster to encode and decode.
 
 =item B< get_goldbach_g2() >
 

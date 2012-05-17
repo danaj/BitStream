@@ -4,7 +4,7 @@ package Data::BitStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # Since we're using Moose/Mouse, things get rather messed up if we try to
 # inherit from Exporter.  Really all we want is the ability to let people
@@ -293,7 +293,7 @@ L<Moose::Meta::Role> as shown above.
 Creates a new object.  By default it has no associated file and is mode RW.
 An optional hash of arguments may be supplied.  Examples:
 
-  $stream = Data::BitStream::XS->new( mode => 'ro' );
+  $stream = Data::BitStream->new( mode => 'ro' );
 
 The stream is opened as a read-only stream.  Attempts to open it for write will
 fail, hence all write / put methods will also fail.  This is most useful for
@@ -302,9 +302,9 @@ opening a file for read, which will ensure no changes are made.
 Possible modes include C<'read' / 'r'>, C<'readonly' / 'ro'>, C<'write' / 'w'>,
 C<'writeonly' / 'wo'>, C<'append' / 'a'>, and C<'readwrite' / 'rw' / 'rdwr'>.
 
-  $stream = Data::BitStream::XS->new( file    => "c.bsc",
-                                      fheader => "HEADER $foo $bar",
-                                      mode    => 'w' );
+  $stream = Data::BitStream->new( file    => "c.bsc",
+                                  fheader => "HEADER $foo $bar",
+                                  mode    => 'w' );
 
 A file is associated with the stream.  Upon closing the file, going out of
 scope, or otherwise being destroyed, the stream will be written to the file,
@@ -312,9 +312,9 @@ with the given header string written first.  While the current implementation
 writes at close time, later implementations may write as the stream is written
 to.
 
-  $stream = Data::BitStream::XS->new( file => "c.bsc",
-                                      fheaderlines => 1,
-                                      mode => 'ro' );
+  $stream = Data::BitStream->new( file => "c.bsc",
+                                  fheaderlines => 1,
+                                  mode => 'ro' );
 
 A file is associated with the stream.  The contents of the file will be
 slurped into the stream.  The given number of header lines will be skipped
