@@ -1,6 +1,6 @@
 Revision history for Perl extension Data::BitStream.
 
-0.05   --- -- ---
+0.05   17 May 2012
 	- Make a couple 64-bit tests work properly with the 'xs' module on
 	  LLP64 systems.
 	- Add put_raw, from_raw uses it.
