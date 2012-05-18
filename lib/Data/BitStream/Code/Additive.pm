@@ -356,6 +356,28 @@ if (0 && eval {require Math::Prime::FastSieve; 1;}) {
     1;
   };
   $prime_test_sub = sub { is_prime(shift); };
+} elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(primes is_prime)); 1;}) {
+  $expand_primes_sub = sub {
+    my $p = shift;
+    my $maxval = shift;
+    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
+      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
+      my $n = ($maxval > -6)  ?  6  :  -$maxval;
+      $n++;   # Because we skip 2 in our basis.
+      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
+    }
+
+    # We want to ensure there is a prime >= $maxval on our list.
+    # Use maximal gap, so this loop ought to run exactly once.
+    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
+    while ($p->[-1] < $maxval) {
+      push @{$p}, primes($p->[-1]+1, $maxval+$adder);
+      $adder *= 2;  # Ensure success
+    }
+    1;
+  };
+  $prime_test_sub = sub { is_prime(shift); };
+
 } elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(next_prime is_prime)); 1;}) {
   # Just in case we find a new version of DBXS but are still running this
   # code instead of using the Goldbach methods that it has.
