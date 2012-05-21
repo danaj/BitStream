@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::ARice::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::ARice::VERSION   = '0.01';
+  $Data::BitStream::Code::ARice::VERSION   = '0.02';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -36,7 +36,8 @@ sub _adjust_k {
 sub put_arice {
   my $self = shift;
   my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
-  my $k = shift;
+  my $kref = \shift;
+  my $k = $$kref;
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 
   # If small values are common (k often 0) then this will reduce the number
@@ -65,12 +66,14 @@ sub put_arice {
   if (@q_list) {
     (defined $sub)  ?  $sub->($self, @q_list)  :  $self->put_gamma(@q_list);
   }
-  $k;
+  $$kref = $k;
+  1;
 }
 sub get_arice {
   my $self = shift;
   my $sub = shift if ref $_[0] eq 'CODE';  ## no critic
-  my $k = shift;
+  my $kref = \shift;
+  my $k = $$kref;
   $self->error_code('param', 'k must be >= 0') unless $k >= 0;
 
   my $count = shift;
@@ -105,8 +108,8 @@ sub get_arice {
     $k = _adjust_k($k, $q);
   }
   $self->code_pos_end;
+  $$kref = $k;
   wantarray ? @vals : $vals[-1];
-  # how to return k?
 }
 no Mouse::Role;
 1;
@@ -121,14 +124,12 @@ Data::BitStream::Code::ARice - A Role implementing Adaptive Rice codes
 
 =head1 VERSION
 
-version 0.01
+version 0.02
 
 =head1 DESCRIPTION
 
 A role written for L<Data::BitStream> that provides get and set methods for
 Adaptive Rice codes.  The role applies to a stream object.
-
-WARNING: The interface for these will likely change.
 
 The default method used is to store the values using Gamma-Rice codes (also
 called Exponential-Golomb codes).  The upper C<k> bits are stored in Elias
@@ -151,7 +152,9 @@ good job of keeping C<k> in a useful range as incoming values vary.
 =item B< put_arice($k, @values) >
 
 Insert one or more values as Rice codes with parameter C<k>.  The value of
-C<k> will change as values are inserted.  The new value of C<k> is returned.
+C<k> will change as values are inserted.  Returns 1.
+
+The parameter C<$k> will be modified.  Do not attempt to use a read-only value.
 
 =item B< put_arice(sub { ... }, $m, @values) >
 
@@ -175,8 +178,7 @@ will be read until the end of the stream is reached.  In scalar context it
 returns the last code read; in array context it returns an array of all
 codes read.
 
-Note that the current interface provides no way to get back the modified
-parameter C<k>.
+The parameter C<$k> will be modified.  Do not attempt to use a read-only value.
 
 =item B< get_arice(sub { ... }, $k) >
 
@@ -187,7 +189,8 @@ instead of Gamma encoding the base.
 
 =head2 Parameters
 
-The parameter C<k> must be an integer greater than or equal to 0.
+The parameter C<k> must be an integer greater than or equal to 0.  It will
+be modified by the routine, so do not use a read-only parameter.
 
 The quotient of C<value E<gt>E<gt> k> is encoded using an Elias Gamma code
 (or via the user supplied subroutine), followed by the lower C<k> bits.

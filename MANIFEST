@@ -54,6 +54,7 @@ t/17-interleave.t
 t/18-multiget.t
 t/19-put-string.t
 t/20-put-stream.t
+t/21-arice.t
 t/70-failures.t
 t/71-bad_gets.t
 t/72-rand-bad-gets.t
