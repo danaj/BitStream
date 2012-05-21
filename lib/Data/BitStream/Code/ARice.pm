@@ -23,37 +23,15 @@ sub _ceillog2_arice {
   $base;
 }
 
-use constant QLOW  => 0;
-use constant QHIGH => 7;
+use constant _QLOW  => 0;
+use constant _QHIGH => 7;
 
 sub _adjust_k {
   my ($k, $q) = @_;
-  return $k-1  if $q <= QLOW  &&  $k > 0;
-  return $k+1  if $q >= QHIGH &&  $k < 60;
+  return $k-1  if $q <= _QLOW  &&  $k > 0;
+  return $k+1  if $q >= _QHIGH &&  $k < 60;
   $k;
 }
-
-#my @hist;
-#my $nhist = 4;
-#sub _adjust_k2 {
-#  my ($k, $q) = @_;
-#  push @hist, $q;
-#  if ($#hist >= $nhist) {
-#    shift @hist;
-#  }
-#  my $t = 0;
-#  map { $t += $_ } @hist;
-#  $t = int( ($t+$nhist-1) / scalar @hist + 0.5 );
-#  my $nk = 0;
-#  $nk = _ceillog2_arice($t) if $t > 0;
-#  $nk = 60 if $nk > 60;
-##print "k is $k, hist is @hist, t is $t, nk is $nk\n";
-#  return $nk;
-#}
-#after 'write_close' => sub {
-#  @hist = ();
-#  1;
-#};
 
 sub put_arice {
   my $self = shift;
@@ -69,7 +47,7 @@ sub put_arice {
     $self->error_code('zeroval') unless defined $val and $val >= 0;
     if ($k == 0) {
       push @q_list, $val;
-      $k++ if $val >= QHIGH;   # _adjust_k shortcut
+      $k++ if $val >= _QHIGH;   # _adjust_k shortcut
     } else {
       my $q = $val >> $k;
       my $r = $val - ($q << $k);
@@ -132,3 +110,131 @@ sub get_arice {
 }
 no Mouse::Role;
 1;
+
+# ABSTRACT: A Role implementing Adaptive Rice codes
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::Code::ARice - A Role implementing Adaptive Rice codes
+
+=head1 VERSION
+
+version 0.01
+
+=head1 DESCRIPTION
+
+A role written for L<Data::BitStream> that provides get and set methods for
+Adaptive Rice codes.  The role applies to a stream object.
+
+WARNING: The interface for these will likely change.
+
+The default method used is to store the values using Gamma-Rice codes (also
+called Exponential-Golomb codes).  The upper C<k> bits are stored in Elias
+Gamma form, and the lower C<k> bits are stored in binary.  When C<k=0> this
+becomes Gamma coding.
+
+As each value is read or written, C<k> is adjusted.  If the upper value is
+zero and C<k E<gt> 0>, C<k> is reduced.  If the upper value is greater than
+six and C<l E<lt> 60>, C<k> is increased.  This simple method does a fairly
+good job of keeping C<k> in a useful range as incoming values vary.
+
+=head1 METHODS
+
+=head2 Provided Object Methods
+
+=over 4
+
+=item B< put_arice($k, $value) >
+
+=item B< put_arice($k, @values) >
+
+Insert one or more values as Rice codes with parameter C<k>.  The value of
+C<k> will change as values are inserted.  The new value of C<k> is returned.
+
+=item B< put_arice(sub { ... }, $m, @values) >
+
+Insert one or more values as Rice codes using the user provided subroutine
+instead of the Gamma code for the base.  Traditional Rice codes:
+
+  sub { shift->put_unary(@_); }
+
+Note that since the adaptive codes would be used when the input data is
+changing, care should be taken with the code used for the upper bits.  A
+universal code is almost always recommended, which Unary is not.  Something
+like Gamma, Delta, Omega, Fibonacci, etc. will typically be a good choice.
+
+=item B< get_arice($k) >
+
+=item B< get_arice($k, $count) >
+
+Decode one or more Rice codes from the stream with adaptive C<k>.
+If count is omitted, one value will be read.  If count is negative, values
+will be read until the end of the stream is reached.  In scalar context it
+returns the last code read; in array context it returns an array of all
+codes read.
+
+Note that the current interface provides no way to get back the modified
+parameter C<k>.
+
+=item B< get_arice(sub { ... }, $k) >
+
+Similar to the regular get method except using the user provided subroutine
+instead of Gamma encoding the base.
+
+=back
+
+=head2 Parameters
+
+The parameter C<k> must be an integer greater than or equal to 0.
+
+The quotient of C<value E<gt>E<gt> k> is encoded using an Elias Gamma code
+(or via the user supplied subroutine), followed by the lower C<k> bits.
+
+The value of C<k> is modified as values are read or written to keep the
+number of upper bits reasonably low as the data changes.
+
+=head2 Required Methods
+
+=over 4
+
+=item B< read >
+
+=item B< write >
+
+=item B< get_gamma >
+
+=item B< put_gamma >
+
+These methods are required for the role.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::Golomb>
+
+=item L<Data::BitStream::Code::GammaGolomb>
+
+=item L<Data::BitStream::Code::ExponentialGolomb>
+
+=item L<Data::BitStream::Code::Gamma>
+
+=back
+
+=head1 AUTHORS
+
+Dana Jacobsen <dana@acm.org>
+
+=head1 COPYRIGHT
+
+Copyright 2011-2012 by Dana Jacobsen <dana@acm.org>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

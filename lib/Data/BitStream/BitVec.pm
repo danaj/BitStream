@@ -171,41 +171,13 @@ sub get_unary {
   wantarray ? @vals : $vals[-1];
 }
 
+
+# It'd be nice to use to_Bin and new_Bin for strings since they're super fast.
+# But they return the result in little endian so would require some string
+# massaging to make into big-endian.
+
 # Using default read_string, put_string
-
-# It'd be nice to use to_Bin and new_Bin since they're super fast.  But...
-# they return the result in little endian.  Hence non-portable and won't
-# match other implementations.
-
-# These are really slow.  So use the default to_string, from_string.
-sub to_string2 {
-  my $self = shift;
-  $self->write_close;
-
-  my $len = $self->len;
-  my $vref = $self->_vec;
-  my $str = '';
-  foreach my $bit (0 .. $len-1) {
-    $str .= $vref->bit_test($bit);
-  }
-  $str;
-}
-sub from_string2 {
-  my $self = shift;
-  my $str  = shift;
-  my $bits = shift || length($str);
-  $self->write_open;
-  my $vref = $self->_vec;
-  $vref->Resize($bits);
-  $vref->Empty();
-  foreach my $bit (0 .. $bits-1) {
-    $vref->Bit_On($bit) if substr($str, $bit, 1) eq '1';
-  }
-  #$self->_vec(  Bit::Vector->new_Bin($bits, $str) );
-  $self->_setlen( $bits );
-  $self->rewind_for_read;
-}
-
+# Using default to_string, from_string
 # Using default to_raw, from_raw
 # Using default to_store, from_store
 

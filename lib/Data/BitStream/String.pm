@@ -424,13 +424,13 @@ Sets the private string to the empty string C<''>.
 
 =item B< put_unary >
 
-=item B< put_unary1 >
-
-=item B< put_gamma >
-
 =item B< get_unary >
 
+=item B< put_unary1 >
+
 =item B< get_unary1 >
+
+=item B< put_gamma >
 
 =item B< get_gamma >
 
@@ -441,6 +441,10 @@ Sets the private string to the empty string C<''>.
 =item B< to_string >
 
 =item B< from_string >
+
+=item B< to_raw >
+
+=item B< put_raw >
 
 These methods have custom implementations.
 

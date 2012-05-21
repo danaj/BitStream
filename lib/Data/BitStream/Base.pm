@@ -760,6 +760,9 @@ generic code for almost all functionality.
 This is used by particular implementations such as L<Data::BitStream::String>
 and L<Data::BitStream::WordVec>.
 
+
+
+
 =head2 DATA
 
 =over 4
@@ -794,6 +797,9 @@ can be helpful in catching mistakes such as reading from a target stream.
 
 =back
 
+
+
+
 =head2 CLASS METHODS
 
 =over 4
@@ -803,7 +809,15 @@ can be helpful in catching mistakes such as reading from a target stream.
 Returns the number of bits in a word, which is the largest allowed size of
 the C<bits> argument to C<read> and C<write>.  This will be either 32 or 64.
 
+=item B< maxval >
+
+Returns the maximum value we can handle.  This should be C< 2 ** maxbits - 1 >,
+or C< 0xFFFF_FFFF > for 32-bit, and C< 0xFFFF_FFFF_FFFF_FFFF > for 64-bit.
+
 =back
+
+
+
 
 =head2 OBJECT METHODS (I<reading>)
 
@@ -824,13 +838,26 @@ Returns true is the stream is at the end.  Rarely used.
 Reads C<$bits> from the stream and returns the value.
 C<$bits> must be between C<1> and C<maxbits>.
 
+Returns undef if the current position is at the end of the stream.
+
+Croaks with an off stream error if not enough bits are left in the stream.
+
 The position is advanced unless the second argument is the string 'readahead'.
 
 I<Note for implementations>: You have to implement this.
 
+=item B< readahead($bits>) >
+
+Identical to calling read with 'readahead' as the second argument.
+Returns the value of the next C<$bits> bits (between C<1> and C<maxbits>).
+Returns undef if the current position is at the end.
+Allows reading past the end of the stream (fills with zeros as necessary).
+Does not advance the position.
+
 =item B< skip($bits) >
 
-Advances the position C<$bits> bits.  Used in conjunction with C<readahead>.
+Advances the position C<$bits> bits.
+Typically used in conjunction with C<readahead>.
 
 =item B< get_unary([$count]) >
 
@@ -860,6 +887,9 @@ Reads C<$bits> bits from the stream and returns them as a binary string, such
 as '0011011'.
 
 =back
+
+
+
 
 =head2 OBJECT METHODS (I<writing>)
 
@@ -928,6 +958,9 @@ possible ways.  Some functionally equivalent methods:
 
 =back
 
+
+
+
 =head2 OBJECT METHODS (I<conversion>)
 
 These methods may be called at any time, and will adjust the state of the
@@ -967,6 +1000,9 @@ Similar to C<from_raw>, but using the value returned by C<to_store>.
 
 =back
 
+
+
+
 =head2 OBJECT METHODS (I<other>)
 
 =over 4
@@ -977,6 +1013,10 @@ Erases all the data, while the writing state is left unchanged.  The position
 and length will both be 0 after this is finished.
 
 I<Note for implementations>: You need an 'after' method to actually erase the data.
+
+=item B< read_open >
+
+Reads the current input file, if one exists.
 
 =item B< write_open >
 
@@ -996,6 +1036,70 @@ A helper function that performs C<erase> followed by C<write_open>.
 A helper function that performs C<write_close> followed by C<rewind>.
 
 =back
+
+
+
+
+=head2 INTERNAL METHODS
+
+These methods are used internally and by roles.  As a stream user you should
+not be using these.
+
+=over 4
+
+=item B< BUILD >
+
+The stream constructor.
+
+=item B< DEMOLISH >
+
+The stream destructor.
+
+=item B< code_pos_start >
+
+=item B< code_pos_end >
+
+=item B< code_pos_set >
+
+Used to handle exceptions for codes that call other codes.  Generally used
+in C< get_* > methods.  The primary reasoning for this is that we want to
+unroll the stream location back to where the caller tried to read the code
+on an error.  That way they can try again with a different code, or examine
+the bits that resulted in an incorrect code.
+C<code_pos_start> starts a new stack entry, C<code_pos_set> sets the start
+of the current code so we know where to go back to, and C<code_pos_end>
+indicates we're done so the code stack entry can be removed.
+
+=item B< code_pos_is_set >
+
+Returns the code stack or C<undef> if not in a code.  This should always be
+C<undef> for users.  If it is not, it means some code routine finished
+abnormally and didn't remove their error stack.
+
+=item B< error_off_stream >
+
+Croaks with a message about reading or skipping off the stream.  If this
+happens inside a C<get_> method, it should indicate the outermost code that
+was used.  The stream position is restored to the start of the outer code.
+
+=item B< error_stream_mode >
+
+Croaks with a message about the wrong mode being used.  This is what happens
+when an attempt is made to write to a stream opened for reading, or read from
+a stream opened for writing.
+
+=item B< error_code >
+
+Central routine that captures code errors, including incorrect parameters,
+values out of range, overflows, range errors, etc.  All errors cause a croak
+except assertions, which will confess (since they indicate a serious internal
+issue).  Some additional information is also included if possible (e.g. the
+outermost code being used, the allowed range, the value, etc.).
+
+=back
+
+
+
 
 =head1 SEE ALSO
 

@@ -301,9 +301,7 @@ my $prime_test_sub;
 #
 # I also plan on looking into a sieve for DBXS.
 
-# Don't even try to use MPFS, so we don't infect ourselves with the
-# Inline M51 warning.
-if (0 && eval {require Math::Prime::FastSieve; 1;}) {
+if (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
 
   my $fs_sieve;
   my $fs_size;
@@ -335,6 +333,7 @@ if (0 && eval {require Math::Prime::FastSieve; 1;}) {
   $prime_test_sub = sub { $fs_sieve->isprime(shift); };
 
 } elsif (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime)); 1;}) {
+
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
@@ -356,7 +355,9 @@ if (0 && eval {require Math::Prime::FastSieve; 1;}) {
     1;
   };
   $prime_test_sub = sub { is_prime(shift); };
+
 } elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(primes is_prime)); 1;}) {
+
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
@@ -379,6 +380,7 @@ if (0 && eval {require Math::Prime::FastSieve; 1;}) {
   $prime_test_sub = sub { is_prime(shift); };
 
 } elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(next_prime is_prime)); 1;}) {
+
   # Just in case we find a new version of DBXS but are still running this
   # code instead of using the Goldbach methods that it has.
   $expand_primes_sub = sub {
@@ -393,6 +395,7 @@ if (0 && eval {require Math::Prime::FastSieve; 1;}) {
     1;
   };
   $prime_test_sub = sub { is_prime(shift); };
+
 } else {
   # Next prime code based on Howard Hinnant's Stackoverflow implementation 6.
   # Uses wheel factorization for performance.  The XS code is MUCH faster.

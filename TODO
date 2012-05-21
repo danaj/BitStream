@@ -28,11 +28,12 @@
 
 - ARice: use reference for parameter k.
 
-- Documentation for ARice.
-
 - Better documentation for Additive.
 
 - range testing for comma and block taboo codes
+
+- test for read_open.  Should read_open / write_open be private?  Should they
+  take a hash like new?  (e.g. write_open( file=>'foo') )
 
 CODES:
 

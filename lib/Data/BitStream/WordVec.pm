@@ -469,15 +469,17 @@ Sets the private vector to the empty string C<''>.
 
 =item B< get_unary >
 
+=item B< put_gamma >
+
 =item B< put_string >
 
 =item B< to_string >
 
 =item B< from_string >
 
-=item B< to_store >
+=item B< from_raw >
 
-=item B< from_store >
+=item B< to_raw >
 
 These methods have custom implementations.
 

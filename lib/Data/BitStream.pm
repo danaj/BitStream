@@ -16,7 +16,7 @@ our @EXPORT_OK = qw( code_is_supported code_is_universal );
 # Our class methods to support referencing codes by text names.
 my %codeinfo;
 
-sub add_code {
+my $add_code_sub = sub {
   my $rinfo = shift;
   die "add_code needs a hash ref" unless defined $rinfo && ref $rinfo eq 'HASH';
   foreach my $p (qw(package name universal params encodesub decodesub)) {
@@ -29,9 +29,9 @@ sub add_code {
   }
   $codeinfo{$name} = $rinfo;
   1;
-}
+};
 
-sub find_code {
+my $find_code_sub = sub {
   my $code = lc shift;
 
   return $codeinfo{$code} if defined $codeinfo{$code};
@@ -41,7 +41,7 @@ sub find_code {
       && ref $Data::BitStream::Base::CODEINFO eq 'ARRAY') {
     foreach my $r (@{$Data::BitStream::Base::CODEINFO}) {
       next unless ref $r eq 'HASH';
-      add_code($r);
+      $add_code_sub->($r);
     }
   }
 
@@ -62,28 +62,28 @@ sub find_code {
     }
     next unless defined $rinfo;
     if (ref $rinfo eq 'HASH') {
-      add_code($rinfo);
+      $add_code_sub->($rinfo);
     } elsif (ref $rinfo eq 'ARRAY') {
       foreach my $r (@{$rinfo}) {
         next unless ref $r eq 'HASH';
-        add_code($r);
+        $add_code_sub->($r);
       }
     }
   }
 
   $codeinfo{$code};
-}
+};
 
 sub code_is_supported {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  return defined find_code($code);
+  return defined $find_code_sub->($code);
 }
 
 sub code_is_universal {
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  my $inforef = find_code($code);
+  my $inforef = $find_code_sub->($code);
   return unless defined $inforef;  # Unknown code.
   return $inforef->{'universal'};
 }
@@ -131,7 +131,7 @@ sub code_put {
   my $self = shift;
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  my $inforef = find_code($code);
+  my $inforef = $find_code_sub->($code);
   die "Unknown code $code" unless defined $inforef;
   my $sub = $inforef->{'encodesub'};
   die "No encoding sub for code $code!" unless defined $sub;
@@ -148,7 +148,7 @@ sub code_get {
   my $self = shift;
   my $code = lc shift;
   my $param;  $param = $1 if $code =~ s/\((.+)\)$//;
-  my $inforef = find_code($code);
+  my $inforef = $find_code_sub->($code);
   die "Unknown code $code" unless defined $inforef;
   my $sub = $inforef->{'decodesub'};
   die "No decoding sub for code $code!" unless defined $sub;
