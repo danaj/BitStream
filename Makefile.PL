@@ -7,12 +7,6 @@ WriteMakefile1(
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
-    # I have not tested with any version of Perl previous to 5.6.2.  v5.6.2
-    # does work, though is forced to 32-bit if it detects 64-bit arithmetic is
-    # broken.  Data::BitStream::XS works fine on 5.6.2 because it is using C
-    # for the bit operations.
-    MIN_PERL_VERSION => 5.0062,
-
     PREREQ_PM => {
                      # I'm using subtest.  Could go back to 0.82 without it.
                      'Test::More'       => '0.94',
@@ -34,8 +28,19 @@ WriteMakefile1(
                               description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
                               requires => { 'Math::Prime::XS' => 0, },
                           },
+                          mpfs =>  {
+                              description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
+                              requires => { 'Math::Prime::FastSieve' => 0, },
+                          },
                     },
                   },
+
+    # I have not tested with any version of Perl previous to 5.6.2.  v5.6.2
+    # does work, though is forced to 32-bit if it detects 64-bit arithmetic is
+    # broken.  Data::BitStream::XS works fine on 5.6.2 because it is using C
+    # for the bit operations.
+    MIN_PERL_VERSION => 5.006002,
+
 );
 
 sub WriteMakefile1 { 
