@@ -1042,18 +1042,10 @@ A helper function that performs C<write_close> followed by C<rewind>.
 
 =head2 INTERNAL METHODS
 
-These methods are used internally and by roles.  As a stream user you should
-not be using these.
+These methods are used by roles.
+As a stream user you should not be using these.
 
 =over 4
-
-=item B< BUILD >
-
-The stream constructor.
-
-=item B< DEMOLISH >
-
-The stream destructor.
 
 =item B< code_pos_start >
 

@@ -227,3 +227,192 @@ sub put_stream {
 __PACKAGE__->meta->make_immutable;
 no Mouse;
 1;
+
+# ABSTRACT: An XS-wrapper implementation of Data::BitStream
+
+=pod
+
+=head1 NAME
+
+Data::BitStream::BLVec - An XS-wrapper implementation of Data::BitStream
+
+=head1 SYNOPSIS
+
+  use Data::BitStream::BLVec;
+  my $stream = Data::BitStream::BLVec->new;
+  $stream->put_gamma($_) for (1 .. 20);
+  $stream->rewind_for_read;
+  my @values = $stream->get_gamma(-1);
+
+
+
+=head1 DESCRIPTION
+
+An implementation of L<Data::BitStream>.  See the documentation for that
+module for many more examples, and L<Data::BitStream::Base> for the API.
+This document only describes the unique features of this implementation,
+which is of limited value to people purely using L<Data::BitStream>.
+
+This implementation points everything to the implementations in
+Data::BitStream::XS where possible.  This gives the majority of the performance
+benefit of the XS module, while (1) transparently applying the speedup through
+the Data::BitStream package, and (2) allowing all the Mouse/Moose extensions
+and extra roles to be used while still retaining high performance at the core.
+
+This is the default L<Data::BitStream> implementation if Data::BitStream::XS
+is installed.
+
+
+
+=head2 DATA
+
+=over 4
+
+=item B< _vec >
+
+A private Data::BitStream::XS object.
+
+=back
+
+
+
+=head2 CLASS METHODS
+
+=over 4
+
+=item I<after> B< erase >
+
+=item I<after> B< rewind >
+
+=item I<after> B< read_open >
+
+=item I<after> B< write_open >
+
+=item I<after> B< write_close >
+
+Applies the appropriate behavior to the XS object.
+
+
+=item B< read >
+
+=item B< write >
+
+=item B< put_string >
+
+=item B< read_string >
+
+=item B< to_raw >
+
+=item B< put_raw >
+
+=item B< from_raw >
+
+=item B< put_stream >
+
+These methods have custom implementations.
+
+The following codes have C<get_> and C<put_> methods:
+
+  unary
+  unary1
+  gamma
+  delta
+  omega
+  fib
+  fibgen
+  levenstein
+  evenrodeh
+  gammagolomb
+  expgolomb
+  baer
+  boldivigna
+  comma
+  blocktaboo
+  goldbach_g1
+  goldbach_g2
+  binword
+  golomb
+  rice
+  arice
+  startstepstop
+  startstop
+
+=back
+
+
+=head2 ROLES
+
+The following roles are included.
+
+=over 4
+
+=item L<Data::BitStream::Code::Base>
+
+=item L<Data::BitStream::Code::Gamma>
+
+=item L<Data::BitStream::Code::Delta>
+
+=item L<Data::BitStream::Code::Omega>
+
+=item L<Data::BitStream::Code::Levenstein>
+
+=item L<Data::BitStream::Code::EvenRodeh>
+
+=item L<Data::BitStream::Code::Fibonacci>
+
+=item L<Data::BitStream::Code::Golomb>
+
+=item L<Data::BitStream::Code::Rice>
+
+=item L<Data::BitStream::Code::GammaGolomb>
+
+=item L<Data::BitStream::Code::ExponentialGolomb>
+
+=item L<Data::BitStream::Code::Baer>
+
+=item L<Data::BitStream::Code::BoldiVigna>
+
+=item L<Data::BitStream::Code::ARice>
+
+=item L<Data::BitStream::Code::Additive>
+
+=item L<Data::BitStream::Code::Comma>
+
+=item L<Data::BitStream::Code::Taboo>
+
+=item L<Data::BitStream::Code::StartStop>
+
+=back
+
+
+
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<Data::BitStream>
+
+=item L<Data::BitStream::XS>
+
+=item L<Data::BitStream::Base>
+
+=item L<Data::BitStream::WordVec>
+
+=back
+
+
+
+=head1 AUTHORS
+
+Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+
+
+=head1 COPYRIGHT
+
+Copyright 2011-2012 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

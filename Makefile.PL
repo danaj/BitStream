@@ -32,6 +32,14 @@ WriteMakefile1(
                               description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
                               requires => { 'Math::Prime::FastSieve' => 0, },
                           },
+                          release_testing =>  {
+                              description => 'Extra modules for author testing',
+                              requires => { 'Test::Pod' => 1.41,
+                                            'Test::Pod::Coverage' => 1.08,
+                                            'Test::Perl::Critic' => 0,
+                                            'Test::Kwalitee' => 0,
+                                          },
+                          },
                     },
                   },
 
