@@ -1,9 +1,10 @@
 Revision history for Perl extension Data::BitStream.
 
-0.06   ?? May 2012
+0.06   28 May 2012
 	- Make all tests numbered.
 	- Documentation additions (Pod Coverage testing).
 	- get_arice / put_arice modify the k parameter, just like XS code.
+	- Update Additive / Goldbach to reflect DBXS and MPFS changes.
 
 0.05   17 May 2012
 	- Make a couple 64-bit tests work properly with the 'xs' module on

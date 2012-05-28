@@ -277,31 +277,99 @@ my $prime_test_sub;
 # extra memory to store the best codes and working sums).  If encoding speed
 # is a goal, then another code is recommended.
 #
-# In terms of raw performance generating primes the ordering on my machine:
-#   1200/s  Math::Prime::FastSieve
-#    984/s  Math::Prime::XS
-#    165/s  Data::BitStream::XS
-#      7/s  Pure Perl
-#      1/s  Math::Primality
-# noting that Math::Primality is really specializing in very large numbers,
-# and that MPFS and MPXS are sieving while the others are walking primes.
-# Sieving takes extra memory (not that much compared to the prime list) and
-# will be less efficient to add one more number at the end, but it is very
-# good when adding many primes, as the performance above shows.
+# In terms of raw performance generating primes, I benchmarked:
 #
-# While Math::Prime::FastSieve's interface doesn't map perfectly to our use,
-# it is fast enough to make it work out.  It still leaves the best-pair
-# search as a bottleneck.  Unfortunately I think the module needs a little more
-# development time.
+# Small ranges (2 to 1k, 1k+1 to 10k, 10k+1 to 100k, 100k+1 to 1M):
+#
+#    1260/s   Data::BitStream::XS        0.06 (simple SoE)
+#    1259/s   Math::Prime::FastSieve     0.10
+#    1172/s   Data::BitStream::XS        0.06 (SoE using wheel 30)
+#    1062/s   Math::Prime::FastSieve     0.09
+#     987/s   Math::Prime::XS            0.26
+#     155/s   Data::BitStream::XS        0.06 (trial)
+#       7/s   Pure Perl (trial)          0.05
+#       1/s   Math::Primality            0.04
+#
+# Small base, big range (2 to 10M):
+#
+#    18.2/s  Data::BitStream::XS        0.06 (SoE using wheel 30)
+#    15.2/s  Data::BitStream::XS        0.06 (simple SoE)
+#    15.1/s  Math::Prime::FastSieve     0.10
+#    12.5/s  Math::Prime::FastSieve     0.09
+#    11.9/s  Math::Prime::XS            0.26
+#     0.3/s  Data::BitStream::XS        0.06 (trial)
+#     0.01/s Pure Perl (trial)          0.05
+#      .01/s Math::Primality            0.04
+#
+# Large base, small range (1000M to 1000M+1000):
+#
+#     .0036s Data::BitStream::XS        0.06 (trial)
+#     .0120s Math::Primality            0.04
+#     .0805s Pure Perl (trial)          0.05
+#    1.97s   Data::BitStream::XS        0.06 (SoE using wheel 30)
+#    4.01s   Data::BitStream::XS        0.06 (simple SoE)
+#    5.29s   Math::Prime::FastSieve     0.10
+#    9.15s   Math::Prime::FastSieve     0.09
+#   17.6 s   Math::Prime::XS            0.26
+#
+# Notes:
+#
+#   These are number of iterations of the test per second.  So for the big
+#   range test that indicates T/s, the test completes in 1/T seconds.
+#
+#   For big ranges, proper prime sieving programs like primesieve 3.6 and yafu
+#   are an order of magnitude faster.  primegen and TOS's segmented siever
+#   are also a decent amount faster.  Most of these are also far more efficient
+#   when dealing with a small range with a large base.  For these programs,
+#   "large" typically means 10^16 or higher, while the tests I'm writing are
+#   for much smaller bases (10^6 - 10^10)
+#
+#   Math::Primality is really specializing in very large numbers (>2^64).
+#
+#   Math::Prime::FastSieve and Data::BitStream::XS could be a bit faster on
+#   the small ranges test if they were allowed to sieve the whole range once,
+#   but that really doesn't match the way we use the functions.
+#
+#   Math::Primality, Pure Perl trial, and Data::BitStream::XS trial do trial
+#   division; the other versions uses sieves.  Trial division works out well
+#   if the base is very large range is very small.  It also uses no memory.
+#   It is horrible for large ranges.  A segmented sieve would be a good
+#   compromise.
+#
+#   Data::BitStream::XS's default sieve uses 8 bits for each 30 numbers.
+#   Data::BitStream::XS's simple sieve uses 15 bits for each 30 numbers.
+#   Math::Prime::XS 0.26 also uses 15 bits per 30 numbers.
+#   Math::Prime::FastSieve 0.10 and earlier use 30 bits for each 30 numbers.
 #
 # The end result of all this is as described in the first paragraph.  Using
 # the Pure Perl implementation is fine for small values, but will be quite
 # slow as the values grow (e.g. 1M).  Switching to any of the fast prime
 # generators will double or more the speed.  Using DBXS is 20-100x faster.
-#
-# I also plan on looking into a sieve for DBXS.
 
-if (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
+if (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(primes is_prime)); 1;}) {
+
+  $expand_primes_sub = sub {
+    my $p = shift;
+    my $maxval = shift;
+    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
+      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
+      my $n = ($maxval > -6)  ?  6  :  -$maxval;
+      $n++;   # Because we skip 2 in our basis.
+      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
+    }
+
+    # We want to ensure there is a prime >= $maxval on our list.
+    # Use maximal gap, so this loop ought to run exactly once.
+    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
+    while ($p->[-1] < $maxval) {
+      push @{$p}, @{primes($p->[-1]+1, $maxval+$adder)};
+      $adder *= 2;  # Ensure success
+    }
+    1;
+  };
+  $prime_test_sub = sub { is_prime(shift); };
+
+} elsif (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
 
   my $fs_sieve;
   my $fs_size;
@@ -356,49 +424,13 @@ if (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
   };
   $prime_test_sub = sub { is_prime(shift); };
 
-} elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(primes is_prime)); 1;}) {
-
-  $expand_primes_sub = sub {
-    my $p = shift;
-    my $maxval = shift;
-    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
-      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
-      my $n = ($maxval > -6)  ?  6  :  -$maxval;
-      $n++;   # Because we skip 2 in our basis.
-      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
-    }
-
-    # We want to ensure there is a prime >= $maxval on our list.
-    # Use maximal gap, so this loop ought to run exactly once.
-    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
-    while ($p->[-1] < $maxval) {
-      push @{$p}, primes($p->[-1]+1, $maxval+$adder);
-      $adder *= 2;  # Ensure success
-    }
-    1;
-  };
-  $prime_test_sub = sub { is_prime(shift); };
-
-} elsif (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(next_prime is_prime)); 1;}) {
-
-  # Just in case we find a new version of DBXS but are still running this
-  # code instead of using the Goldbach methods that it has.
-  $expand_primes_sub = sub {
-    my $p = shift;
-    my $maxval = shift;
-    if ($maxval >= 0) {
-      push @{$p}, next_prime($p->[-1]) while $p->[-1] < $maxval;
-    } else {
-      my $maxindex = -$maxval;
-      push @{$p}, next_prime($p->[-1]) while !defined $p->[$maxindex];
-    }
-    1;
-  };
-  $prime_test_sub = sub { is_prime(shift); };
-
 } else {
   # Next prime code based on Howard Hinnant's Stackoverflow implementation 6.
-  # Uses wheel factorization for performance.  The XS code is MUCH faster.
+  # Uses wheel factorization for performance.  If you have any sort of
+  # reasonable range you're asking for, a sieve is faster, and for larger
+  # ranges it is much, much faster.  Note that this is an order of magnitude
+  # slower than any XS code, and for a range of 2 - 1_000_000 it is over 300x
+  # slower than the XS sieves.
 
   sub _is_prime {   # Note:  assumes n is not divisible by 2, 3, or 5!
     my $x = shift;
@@ -427,21 +459,19 @@ if (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
   my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
   sub _next_prime {
     my $x = shift;
-    if ($x <= 30) {
-      my @small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31);
-      my $spindex = 0;  $spindex++ while $x >= $small_primes[$spindex];
-      return $small_primes[$spindex];
+    if ($x <= 67) {
+      return (2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,
+              23,23,23,23,29,29,29,29,29,29,31,31,37,37,37,37,37,
+              37,41,41,41,41,43,43,47,47,47,47,53,53,53,53,53,53,
+              59,59,59,59,59,59,61,61,67,67,67,67,67,67,71)[$x];
     }
     $x += 1;
-    # Search starting at L*k0 + indices[in]
-    my $L = 30;
-    my $k0 = int($x/$L);
-    my $in = 0;  $in++ while ($x-$k0*$L) > $_prime_indices[$in];
-    my $n = $L * $k0 + $_prime_indices[$in];
-    my $M = scalar @_prime_indices;
+    my $k0 = int($x/30);
+    my $in = 0;  $in++ while ($x-$k0*30) > $_prime_indices[$in];
+    my $n = 30 * $k0 + $_prime_indices[$in];
     while (!_is_prime($n)) {
-      if (++$in == $M) {  $k0++; $in = 0;  }
-      $n = $L * $k0 + $_prime_indices[$in];
+      if (++$in == 8) {  $k0++; $in = 0;  }
+      $n = 30 * $k0 + $_prime_indices[$in];
     }
     $n;
   }
@@ -684,13 +714,19 @@ Data::BitStream::Code::Additive - A Role implementing Additive codes
 
 version 0.01
 
+
 =head1 DESCRIPTION
 
 A role written for L<Data::BitStream> that provides get and set methods for
 Additive codes.  The role applies to a stream object.
 
 If you use the Goldbach codes for inputs more than ~1000, I highly recommend
-installing L<Data::BitStream::XS> or L<Math::Prime::XS> for better performance.
+installing L<Data::BitStream::XS> for better performance.  You can get about
+2x better performance by using L<Math::Prime::FastSieve> or L<Math::Prime::XS>
+or just the prime sieving from L<Data::BitStream::XS>.  Using the latter for
+the codes themselves results in another 100x or so performance improvement for
+large values.
+
 
 =head1 EXAMPLES
 
