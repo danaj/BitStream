@@ -28,7 +28,7 @@ requires qw(maxbits read skip write put_unary put_binword put_rice);
 #
 # See:  Steven Pigeon, "Start/Stop Codes", Universite de Montreal.
 #
-# See:  E.R. Fiala, D.H. Greene, “Data Compression with Finite Windows”, Comm ACM, Vol 32, No 4, pp 490–505 , April 1989
+# See:  E.R. Fiala, D.H. Greene, "Data Compression with Finite Windows", Comm ACM, Vol 32, No 4, pp 490-505 , April 1989
 #
 # See: Peter Fenwick, "Punctured Elias Codes for variable-length coding of the integers", Technical Report 137, Department of Computer Science, University of Auckland, December 1996
 #
@@ -334,7 +334,7 @@ These methods are required for the role.
 =item Steven Pigeon, "Start/Stop Codes", in Proceedings of the 2001 Data
       Compression Conference, 2001.
 
-=item E.R. Fiala, D.H. Greene, “Data Compression with Finite Windows”, Comm ACM, Vol 32, No 4, pp 490–505 , April 1989
+=item E.R. Fiala, D.H. Greene, "Data Compression with Finite Windows", Comm ACM, Vol 32, No 4, pp 490-505 , April 1989
 
 =item Peter Fenwick, "Punctured Elias Codes for variable-length coding of the integers", Technical Report 137, Department of Computer Science, University of Auckland, December 1996
 

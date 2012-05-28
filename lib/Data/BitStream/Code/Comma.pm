@@ -192,7 +192,7 @@ These methods are required for the role.
 
 =item Peter Fenwick, "Punctured Elias Codes for variable-length coding of the integers", Technical Report 137, Department of Computer Science, University of Auckland, December 1996.
 
-=item Peter Fenwick,  “Ziv-Lempel encoding with multi-bit flags”, Proc. Data Compression Conference (IEEE DCC), Snowbird, Utah, pp 138–147, March 1993.
+=item Peter Fenwick, "Ziv-Lempel encoding with multi-bit flags", Proc. Data Compression Conference (IEEE DCC), Snowbird, Utah, pp 138-147, March 1993.
 
 =item Khalid Sayood (editor), "Lossless Compression Handbook", 2003.
 
