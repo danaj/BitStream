@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::BitVec::VERSION = '0.01';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -182,7 +182,7 @@ sub get_unary {
 # Using default to_store, from_store
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: A Bit::Vector implementation of Data::BitStream

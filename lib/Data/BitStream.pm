@@ -1,12 +1,12 @@
 package Data::BitStream;
-# I have tested with 5.8.9 through 5.15.3.
-# I was unable to install Mouse on 5.8.0 so could not test with that.
+# I have tested with 5.6.2 through 5.16.0 using Mouse.
+# Moo requires perl 5.8.1, Moose requires 5.8.3.
 use strict;
 use warnings;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
-# Since we're using Moose/Mouse, things get rather messed up if we try to
+# Since we're using Moose, things get rather messed up if we try to
 # inherit from Exporter.  Really all we want is the ability to let people
 # use a couple convenience functions, so just grab the import method.
 use Exporter qw(import);
@@ -119,7 +119,7 @@ sub code_is_universal {
 #
 # A 32-bit HP 9000/785 gave similar results though ~15x slower overall.
 
-use Mouse;
+use Moose;
 if (eval {require Data::BitStream::BLVec}) {
   extends 'Data::BitStream::BLVec';
 } else {
@@ -162,7 +162,7 @@ sub code_get {
 }
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 
 1;
 __END__
@@ -174,9 +174,16 @@ __END__
 
 =encoding utf8
 
+
 =head1 NAME
 
 Data::BitStream - A bit stream class including integer coding methods
+
+
+=head1 VERSION
+
+version 0.07
+
 
 =head1 SYNOPSIS
 
@@ -188,11 +195,11 @@ Data::BitStream - A bit stream class including integer coding methods
 
 See the examples for more uses.
 
+
 =head1 DESCRIPTION
 
-A Mouse/Moose class providing read/write access to bit streams.  This includes
-many integer coding methods as well as straightforward ways to implement new
-codes.
+A Moose class providing read/write access to bit streams.  This includes many
+integer coding methods as well as straightforward ways to implement new codes.
 
 Bit streams are often used in data compression and in embedded products where
 memory is at a premium.  While this Perl implementation may not be appropriate

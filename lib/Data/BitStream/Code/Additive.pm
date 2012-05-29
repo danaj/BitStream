@@ -32,7 +32,7 @@ our $CODEINFO = [ { package   => __PACKAGE__,
 
 
 #use List::Util qw(max);
-use Mouse::Role;
+use Moose::Role;
 requires qw(read write);
 
 sub _additive_gamma_len {
@@ -699,7 +699,7 @@ sub get_goldbach_g2 {
 
 ##########  End of tied array example
 
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Additive codes

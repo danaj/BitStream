@@ -21,7 +21,7 @@ sub _floorlog2_lev {
   $base;
 }
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(read write get_unary1 put_unary1);
 
 # Levenstein code (also called Levenshtein).
@@ -122,7 +122,7 @@ sub get_levenstein {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Levenstein codes

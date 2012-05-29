@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_rice(@_)},
                   decodesub => sub {shift->get_rice(@_)}, };
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(read write put_unary get_unary);
 
 sub put_rice {
@@ -59,7 +59,7 @@ sub get_rice {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Rice codes

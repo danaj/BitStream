@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_boldivigna(@_)},
                   decodesub => sub {shift->get_boldivigna(@_)}, };
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(read write put_unary get_unary maxbits get_gamma put_gamma);
 
 # Boldi-Vigna Zeta codes.
@@ -134,7 +134,7 @@ sub get_boldivigna {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing the Zeta codes of Boldi and Vigna

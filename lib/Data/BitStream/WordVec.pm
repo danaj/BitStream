@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::WordVec::VERSION = '0.03';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -407,7 +407,7 @@ sub from_raw {
 }
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: A Vector-32 implementation of Data::BitStream

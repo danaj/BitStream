@@ -12,16 +12,32 @@ WriteMakefile1(
                      'Test::More'       => '0.94',
                      # Using just the import method of Exporter
                      'Exporter'         => '5.57',
-                     # I normally use 0.93, but tested with RHEL6's 0.58
-                     'Mouse'            => '0.58',
-                     'Mouse::Role'      => '0.58',
+
+                     # This module used to use Mouse:
+                     # 'Mouse'            => '0.58',
+                     # 'Mouse::Role'      => '0.58',
+
+                     # Tested with Moose 2.0205 - 2.0602
+                     # TODO: update once cpantesters reports are in
+                     'Moose'            => 0,
+                     'Moose::Role'      => 0,
+                     'MooseX::Types::Moose' => 0,
+
+                     # Alternately it could use Any::Moose, but many people
+                     # believe Moo is a better alternative.
+
+                     # We could use Moo with just a little more twiddling
+                     #'Moo'              => '0.091007',
+                     #'Moo::Role'        => 0,
+                     #'MooX::Types::MooseLike' => 0,
+                     #'namespace::clean' => 0,
                  },
 
     META_MERGE => {
-                    recommends => { 'Data::BitStream::XS' => 0.04, },
+                    recommends => { 'Data::BitStream::XS' => 0.06, },
                     optional_features => {
                           bitvec =>  {
-                              description => 'The Bit::Vector implementation',
+                              description => 'The Bit::Vector implementation, just for example',
                               requires => { 'Bit::Vector' => 0, },
                           },
                           mpxs =>  {

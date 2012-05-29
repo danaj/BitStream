@@ -6,7 +6,7 @@ BEGIN {
   $Data::BitStream::MinimalVec::VERSION   = '0.02';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -84,7 +84,7 @@ sub write {
 # default everything else
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: A minimal implementation of Data::BitStream

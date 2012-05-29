@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_delta(@_)},
                   decodesub => sub {shift->get_delta(@_)}, };
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(maxbits read write put_gamma get_gamma);
 
 # Elias Delta code.
@@ -69,7 +69,7 @@ sub get_delta {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Elias Delta codes

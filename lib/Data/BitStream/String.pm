@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::String::VERSION = '0.02';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',  # implemented here
@@ -365,7 +365,7 @@ sub put_raw {
 #}
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: A String implementation of Data::BitStream

@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::Vec::VERSION = '0.02';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -204,7 +204,7 @@ sub from_store {
 }
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: A Vector-1 implementation of Data::BitStream

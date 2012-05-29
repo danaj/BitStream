@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_comma(@_)},
                   decodesub => sub {shift->get_comma(@_)}, };
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(read write);
 
 sub put_comma {
@@ -89,7 +89,7 @@ sub get_comma {
   wantarray ? @vals : $vals[-1];
 }
 
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Comma codes

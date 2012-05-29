@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::BLVec::VERSION   = '0.02';
 }
 
-use Mouse;
+use Moose;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -225,7 +225,7 @@ sub put_stream {
 # default everything else
 
 __PACKAGE__->meta->make_immutable;
-no Mouse;
+no Moose;
 1;
 
 # ABSTRACT: An XS-wrapper implementation of Data::BitStream
@@ -256,7 +256,7 @@ which is of limited value to people purely using L<Data::BitStream>.
 This implementation points everything to the implementations in
 Data::BitStream::XS where possible.  This gives the majority of the performance
 benefit of the XS module, while (1) transparently applying the speedup through
-the Data::BitStream package, and (2) allowing all the Mouse/Moose extensions
+the Data::BitStream package, and (2) allowing all the Moo/Mouse/Moose extensions
 and extra roles to be used while still retaining high performance at the core.
 
 This is the default L<Data::BitStream> implementation if Data::BitStream::XS

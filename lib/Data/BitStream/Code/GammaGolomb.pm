@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_gammagolomb(@_)},
                   decodesub => sub {shift->get_gammagolomb(@_)}, };
 
-use Mouse::Role;
+use Moose::Role;
 requires qw(put_golomb put_gamma get_golomb get_gamma);
 
 sub put_gammagolomb {
@@ -24,7 +24,7 @@ sub get_gammagolomb {
   my $self = shift;
   $self->get_golomb( sub { shift->get_gamma(@_); }, @_ );
 }
-no Mouse::Role;
+no Moose::Role;
 1;
 
 # ABSTRACT: A Role implementing Gamma-Golomb codes
