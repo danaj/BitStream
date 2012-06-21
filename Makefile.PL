@@ -12,6 +12,7 @@ WriteMakefile1(
                      'Test::More'       => '0.94',
                      # Using just the import method of Exporter
                      'Exporter'         => '5.57',
+                     'Carp'             => 0,
 
                      # This module used to use Mouse:
                      # 'Mouse'            => '0.58',
