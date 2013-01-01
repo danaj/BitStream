@@ -138,11 +138,12 @@ BEGIN {
 
   $_all_ones = ($_host_word_size == 32) ? 0xFFFFFFFF : ~0;
 }
-use constant maxbits => $_host_word_size;
 # Moo 1.000007 doesn't allow inheritance of 'use constant'.
-# Use a sub with empty prototype (this is well documented)
+#use constant maxbits => $_host_word_size;
 #use constant maxval  => $_all_ones;
-sub maxval () { $_all_ones; }  ## no critic (ProhibitSubroutinePrototypes)
+# Use a sub with empty prototype (see perlsub documentation)
+sub maxbits () { $_host_word_size }  ## no critic (ProhibitSubroutinePrototypes)
+sub maxval  () { $_all_ones }        ## no critic (ProhibitSubroutinePrototypes)
 
 sub rewind {
   my $self = shift;
@@ -472,12 +473,12 @@ sub put_unary1 {
     $self->error_code('zeroval') unless defined $val and $val >= 0;
     warn "Trying to write large unary value ($val)" if $val > 10_000_000;
     if ($val < maxbits) {
-      $self->write($val+1, maxval << 1);
+      $self->write($val+1, maxval() << 1);
     } else {
       my $nbits  = $val % maxbits;
-      my $nwords = ($val-$nbits) / maxbits;
+      my $nwords = ($val-$nbits) / maxbits();
       $self->write(maxbits, maxval)  for (1 .. $nwords);
-      $self->write($nbits+1, maxval << 1);
+      $self->write($nbits+1, maxval() << 1);
     }
   }
   1;
