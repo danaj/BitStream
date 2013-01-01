@@ -8,7 +8,8 @@ BEGIN {
   $Data::BitStream::BLVec::VERSION   = '0.02';
 }
 
-use Moose;
+use Moo;
+use MooX::Types::MooseLike::Base qw/InstanceOf/;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -32,7 +33,7 @@ with 'Data::BitStream::Base',
 use Data::BitStream::XS 0.04;
 
 has '_vec' => (is => 'rw',
-               isa => 'Data::BitStream::XS',
+               isa => InstanceOf['Data::BitStream::XS'],
                default => sub { return Data::BitStream::XS->new });
 
 # Force our pos and len sets to also set the XS object
@@ -225,7 +226,7 @@ sub put_stream {
 # default everything else
 
 __PACKAGE__->meta->make_immutable;
-no Moose;
+no Moo;
 1;
 
 # ABSTRACT: An XS-wrapper implementation of Data::BitStream

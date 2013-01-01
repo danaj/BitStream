@@ -1,9 +1,10 @@
 Revision history for Perl extension Data::BitStream.
 
-0.07   ?? ??? 2012
-	- Change to Moose instead of Mouse.  Too much grief around their
-	  conflicts, and Moo wasn't a clean change.  Arguably Moo is a better
-	  fit since in theory it supports everything needed.
+0.07    1 Jan 2013
+	- Change from Mouse to Moo.  Mouse has great performance, but the Perl
+	  community is moving toward Moo/Moose and away from Any:Moose and
+	  Mouse.  In most cases Moo will be similar performance assuming the
+	  Class::XSAccessor module is installed.
 	- Remove some Unicode characters that snuck into references.
 	- Much faster primes for big Goldbach codes.  DBXS is still ~30x
 	  faster overall, but almost all of that is the pair search.

@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_golomb(@_)},
                   decodesub => sub {shift->get_golomb(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(read write put_unary get_unary);
 
 # Usage:
@@ -112,7 +112,7 @@ sub get_golomb {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Golomb codes

@@ -8,7 +8,7 @@ BEGIN {
   $Data::BitStream::Vec::VERSION = '0.02';
 }
 
-use Moose;
+use Moo;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -29,7 +29,7 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::Taboo',
      'Data::BitStream::Code::StartStop';
 
-has '_vec' => (is => 'rw', default => '');
+has '_vec' => (is => 'rw', default => sub{''});
 
 # Evil, but must access the raw vector.
 sub _vecref {
@@ -204,7 +204,7 @@ sub from_store {
 }
 
 __PACKAGE__->meta->make_immutable;
-no Moose;
+no Moo;
 1;
 
 # ABSTRACT: A Vector-1 implementation of Data::BitStream

@@ -32,7 +32,7 @@ our $CODEINFO = [ { package   => __PACKAGE__,
 
 
 #use List::Util qw(max);
-use Moose::Role;
+use Moo::Role;
 requires qw(read write);
 
 sub _additive_gamma_len {
@@ -559,7 +559,7 @@ sub get_goldbach_g2 {
 }
 
 
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Additive codes
@@ -589,9 +589,6 @@ computational costs.
 =head1 EXAMPLES
 
   use Data::BitStream;
-  use Data::BitStream::Code::Additive;
-  my $stream = Data::BitStream->new;
-  Data::BitStream::Code::Additive->meta->apply($stream);
 
   my @array = (4, 2, 0, 3, 7, 72, 0, 1, 13);
 

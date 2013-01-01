@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_gamma(@_)},
                   decodesub => sub {shift->get_gamma(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(maxbits read write put_unary get_unary);
 
 # Elias Gamma code.
@@ -90,7 +90,7 @@ sub get_gamma {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Elias Gamma codes

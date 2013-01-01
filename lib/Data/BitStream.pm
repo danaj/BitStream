@@ -1,12 +1,12 @@
 package Data::BitStream;
-# I have tested with 5.6.2 through 5.16.0 using Mouse.
+# I have tested with 5.6.2 through 5.17.7 using Mouse.
 # Moo requires perl 5.8.1, Moose requires 5.8.3.
 use strict;
 use warnings;
 
 our $VERSION = '0.07';
 
-# Since we're using Moose, things get rather messed up if we try to
+# Since we're using Moo, things get rather messed up if we try to
 # inherit from Exporter.  Really all we want is the ability to let people
 # use a couple convenience functions, so just grab the import method.
 use Exporter qw(import);
@@ -119,7 +119,7 @@ sub code_is_universal {
 #
 # A 32-bit HP 9000/785 gave similar results though ~15x slower overall.
 
-use Moose;
+use Moo;
 if (eval {require Data::BitStream::BLVec}) {
   extends 'Data::BitStream::BLVec';
 } else {
@@ -162,7 +162,7 @@ sub code_get {
 }
 
 __PACKAGE__->meta->make_immutable;
-no Moose;
+no Moo;
 
 1;
 __END__
@@ -198,7 +198,7 @@ See the examples for more uses.
 
 =head1 DESCRIPTION
 
-A Moose class providing read/write access to bit streams.  This includes many
+A Moo class providing read/write access to bit streams.  This includes many
 integer coding methods as well as straightforward ways to implement new codes.
 
 Bit streams are often used in data compression and in embedded products where
@@ -274,8 +274,12 @@ bias estimations and adaptive determination of the parameter for Rice coding.
   use Data::BitStream::Code::BoldiVigna;
 
   my $stream = Data::BitStream->new;
+  # Moose:
   Data::BitStream::Code::Baer->meta->apply($stream);
   Data::BitStream::Code::BoldiVigna->meta->apply($stream);
+  # Moo:
+  Moo::Role->apply_roles_to_object($stream,
+     qw/Data::BitStream::Code::Baer Data::BitStream::Code::BoldiVigna/);
 
   $stream->put_baer(-1, 14);      # put 14 as a Baer c-1 code
   $stream->put_boldivigna(2, 7);  # put 7 as a Zeta(2) code
@@ -287,7 +291,7 @@ bias estimations and adaptive determination of the parameter for Rice coding.
 Not all codes are included by default, including the power-law codes of
 Michael Baer, the Zeta codes of Boldi and Vigna, and Escape codes.  These,
 and any other codes write or acquire, can be incorporated using
-L<Moose::Meta::Role> as shown above.
+L<Moo::Role> or the Moose MOP as shown above.
 
 
 
@@ -448,7 +452,7 @@ These methods are only valid while the stream is in writing state.
 
 =item B< write($bits, $value) >
 
-Writes C<$value> to the stream using C<$bits> bits.  
+Writes C<$value> to the stream using C<$bits> bits.
 C<$bits> must be between C<1> and C<maxbits>, unless C<value> is 0 or 1, in
 which case C<bits> may be larger than C<maxbits>.
 
@@ -540,7 +544,7 @@ reading.  Methods for read such as
 C<read>, C<get>, C<skip>, C<rewind>, C<skip>, and C<exhausted>
 are not allowed while writing.  Methods for write such as
 C<write> and C<put>
-are not allowed while reading.  
+are not allowed while reading.
 
 The C<write_open> and C<erase_for_write> methods will set writing to true.
 The C<write_close> and C<rewind_for_read> methods will set writing to false.

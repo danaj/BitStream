@@ -8,7 +8,8 @@ BEGIN {
   $Data::BitStream::BitVec::VERSION = '0.01';
 }
 
-use Moose;
+use Moo;
+use MooX::Types::MooseLike::Base qw/InstanceOf/;
 
 with 'Data::BitStream::Base',
      'Data::BitStream::Code::Gamma',
@@ -33,7 +34,7 @@ use Bit::Vector;
 use 5.009_002;   # Using pack("Q<", $v) for big endian machines
 
 has '_vec' => (is => 'rw',
-               isa => 'Bit::Vector',
+               isa => InstanceOf['Bit::Vector'],
                default => sub { return Bit::Vector->new(0) });
 
 after 'erase' => sub {
@@ -182,7 +183,7 @@ sub get_unary {
 # Using default to_store, from_store
 
 __PACKAGE__->meta->make_immutable;
-no Moose;
+no Moo;
 1;
 
 # ABSTRACT: A Bit::Vector implementation of Data::BitStream

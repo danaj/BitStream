@@ -3,12 +3,12 @@ use strict;
 use warnings;
 
 use FindBin;  use lib "$FindBin::Bin/../lib";
+use Moo::Role qw/apply_roles_to_object/;
 use Data::BitStream;
-use Data::BitStream::Code::Escape;
 
 my $stream = Data::BitStream->new();
 die unless defined $stream;
-Data::BitStream::Code::Escape->meta->apply($stream);
+Moo::Role->apply_roles_to_object($stream, qw/Data::BitStream::Code::Escape/);
 
 my $p = 0;
 while (<>) {

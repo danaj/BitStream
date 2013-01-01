@@ -1,7 +1,7 @@
 Data-BitStream version 0.07
 ===========================
 
-A Moose class providing read/write access to bit streams.  This includes many
+A Moo class providing read/write access to bit streams.  This includes many
 integer coding methods as well as straightforward ways to implement new codes.
 
 Bit streams are often used in data compression and in embedded products where
@@ -43,17 +43,17 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Test::More
-  Moose
-  Moose::Role
-  MooseX::Types::Moose
+  Moo
+  Moo::Role
+  MooX::Types::MooseLike
 
-It works identically with Mouse instead of Moose, and is also faster.  If speed
+It works identically with Moo, Mouse, or Moose.  Moo with Class::XSAccessor
+installed is as fast as Mouse for some operations, but not all.  If speed
 is important, install Data::BitStream::XS.  If speed is more important than
-extensibility, use Data::BitStream::XS directly.  I've had it running with
-Moo, but it takes some non-interchangeable code differences.
+extensibility, use Data::BitStream::XS directly.
 
 I have tested this using perl versions 5.6.2, 5.8.0, 5.8.9, 5.10.1, 5.12.4,
-5.14.1, 5.15.2, and 5.16.0.
+5.14.1, 5.15.2, 5.16.0, 5.16.2, and 5.17.5.
 
 It works with Perl 5.6.2, with a caveat.  On 32-bit O/S, 64-bit Perl can have
 broken arithmetic (two unequal 64-bit numbers will compare as equal).  We force

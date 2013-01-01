@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_escape([split('-',shift)], @_)},
                   decodesub => sub {shift->get_escape([split('-',shift)], @_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(read write maxbits);
 
 # Escape code.  Similar to Start/Stop codes, but rather than encoding the
@@ -99,7 +99,7 @@ sub get_escape {
   }
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Escape codes

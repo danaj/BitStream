@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_baer(@_)},
                   decodesub => sub {shift->get_baer(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires 'read', 'write', 'put_unary', 'get_unary';
 
 # Baer codes.
@@ -105,7 +105,7 @@ sub get_baer {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Michael B. Baer's power law codes

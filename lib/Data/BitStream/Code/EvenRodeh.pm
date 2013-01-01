@@ -31,7 +31,7 @@ sub _dec_to_bin_er {
   }
 }
 
-use Moose::Role;
+use Moo::Role;
 requires qw(read write put_string);
 
 # Even-Rodeh code
@@ -90,7 +90,7 @@ sub get_evenrodeh {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Even-Rodeh codes

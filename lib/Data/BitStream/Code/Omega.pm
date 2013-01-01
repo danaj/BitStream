@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_omega(@_)},
                   decodesub => sub {shift->get_omega(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires 'read', 'write', 'skip';
 
 # Elias Omega code.
@@ -153,7 +153,7 @@ sub get_omega {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Elias Omega codes

@@ -5,8 +5,8 @@ perl:
   - "5.12"
   - "5.10"
 
-before_script:
-    - cpanm Moose  Moose::Role  MooseX::Types::Moose
+#before_script:
+#    - cpanm Moose  Moose::Role  MooseX::Types::Moose
 
 install:
     - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org .

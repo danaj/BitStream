@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_blocktaboo(@_)},
                   decodesub => sub {shift->get_blocktaboo(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(read write);
 
 sub put_blocktaboo {
@@ -133,7 +133,7 @@ sub get_blocktaboo {
   wantarray ? @vals : $vals[-1];
 }
 
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Taboo codes

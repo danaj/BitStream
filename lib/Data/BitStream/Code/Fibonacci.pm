@@ -29,7 +29,7 @@ our $CODEINFO = [ { package   => __PACKAGE__,
                   },
                 ];
 
-use Moose::Role;
+use Moo::Role;
 requires qw(write put_string get_unary read);
 
 # Fraenkel/Klein 1996 C1 code (based on work by Apostolico/Fraenkel 1985)
@@ -434,7 +434,7 @@ sub get_fib_c2 {
   $self->code_pos_end;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Fibonacci codes

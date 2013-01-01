@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_expgolomb(@_)},
                   decodesub => sub {shift->get_expgolomb(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(put_rice put_gamma get_rice get_gamma);
 
 # Basic put implementation:
@@ -35,7 +35,7 @@ sub get_expgolomb {
   $self->get_rice( sub { shift->get_gamma(@_); }, @_ );
 }
 
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Exponential-Golomb codes

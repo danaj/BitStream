@@ -21,7 +21,7 @@ our $CODEINFO = [
       decodesub => sub {shift->get_startstepstop([split('-',shift)], @_)}, },
                 ];
 
-use Moose::Role;
+use Moo::Role;
 requires qw(maxbits read skip write put_unary put_binword put_rice);
 
 # Start/Stop and Start-Step-Stop codes.
@@ -196,7 +196,7 @@ sub get_startstepstop {
 
   return $self->get_startstop( [@pmap], @_ );
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Start/Stop and Start-Step-Stop codes

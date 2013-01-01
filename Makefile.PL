@@ -17,24 +17,23 @@ WriteMakefile1(
                      # This module used to use Mouse:
                      # 'Mouse'            => '0.58',
                      # 'Mouse::Role'      => '0.58',
-
-                     # Tested with Moose 2.0205 - 2.0602
-                     # TODO: update once cpantesters reports are in
-                     'Moose'            => 0,
-                     'Moose::Role'      => 0,
-                     'MooseX::Types::Moose' => 0,
-
-                     # Alternately it could use Any::Moose, but many people
-                     # believe Moo is a better alternative.
-
-                     # We could use Moo with just a little more twiddling
-                     #'Moo'              => '0.091007',
-                     #'Moo::Role'        => 0,
-                     #'MooX::Types::MooseLike' => 0,
-                     #'namespace::clean' => 0,
+                     # Then we tied Moose (2.0205 - 2.0602):
+                     # 'Moose'            => 0,
+                     # 'Moose::Role'      => 0,
+                     # 'MooseX::Types::Moose' => 0,
+                     # And now Moo.
+                      'Moo'                    => 1.000006,
+                      'Moo::Role'              => 0,
+                      'MooX::Types::MooseLike' => 0,
+                     # Technically not needed, but big performance help
+                      'Class::XSAccessor'      => 0,
                  },
 
     META_MERGE => {
+                    resources  => {
+                      homepage   => 'https://github.com/danaj/BitStream/tree',
+                      repository => 'git://github.com/danaj/BitStream.git',
+                    },
                     recommends => { 'Data::BitStream::XS' => 0.06, },
                     optional_features => {
                           bitvec =>  {

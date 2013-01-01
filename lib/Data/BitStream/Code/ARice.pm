@@ -13,7 +13,7 @@ our $CODEINFO = { package   => __PACKAGE__,
                   encodesub => sub {shift->put_arice(@_)},
                   decodesub => sub {shift->get_arice(@_)}, };
 
-use Moose::Role;
+use Moo::Role;
 requires qw(read write write_close put_unary get_unary);
 
 sub _ceillog2_arice {
@@ -111,7 +111,7 @@ sub get_arice {
   $$kref = $k;
   wantarray ? @vals : $vals[-1];
 }
-no Moose::Role;
+no Moo::Role;
 1;
 
 # ABSTRACT: A Role implementing Adaptive Rice codes

@@ -30,13 +30,13 @@ our $CODEINFO = [ { package   => __PACKAGE__,
                   },
                 ];
 
-use Moose::Role;
-use MooseX::Types::Moose qw(ArrayRef Int Str Bool);
+use Moo::Role;
+use MooX::Types::MooseLike::Base qw/Int Bool Str ArrayRef/;
 
 # pos is ignored while writing
-has 'pos'     => (is => 'ro', isa => Int, writer => '_setpos', default => sub {0});
-has 'len'     => (is => 'ro', isa => Int, writer => '_setlen', default => sub {0});
-has 'mode'    => (is => 'rw', default => sub {'rdwr'});
+has 'pos'     => (is => 'ro', writer => '_setpos', default => sub{0});
+has 'len'     => (is => 'ro', writer => '_setlen', default => sub{0});
+has 'mode'    => (is => 'rw', default => sub{'rdwr'});
 has '_code_pos_array' => (is => 'rw',
                           isa => ArrayRef[Int],
                           default => sub {[]} );
@@ -48,7 +48,7 @@ has 'file'         => (is => 'ro', writer => '_setfile');
 has 'fheader'      => (is => 'ro', writer => '_setfheader');
 has 'fheaderlines' => (is => 'ro');
 
-has 'writing' => (is => 'ro', isa => Bool,writer => '_setwrite', default=> sub{1});
+has 'writing' => (is => 'ro', isa => Bool, writer => '_setwrite', default => sub {1});
 
 # Useful for testing, but time consuming.  Not so bad now that all the test
 # suites call put_*  ~30 times with a list instead of per-value ~30,000 times.
@@ -139,7 +139,10 @@ BEGIN {
   $_all_ones = ($_host_word_size == 32) ? 0xFFFFFFFF : ~0;
 }
 use constant maxbits => $_host_word_size;
-use constant maxval  => $_all_ones;
+# Moo 1.000007 doesn't allow inheritance of 'use constant'.
+# Use a sub with empty prototype (this is well documented)
+#use constant maxval  => $_all_ones;
+sub maxval () { $_all_ones; }  ## no critic (ProhibitSubroutinePrototypes)
 
 sub rewind {
   my $self = shift;
@@ -738,7 +741,7 @@ sub _dec_to_bin {
   }
 }
 
-no Moose::Role;
+no Moo::Role;
 1;
 
 
@@ -752,7 +755,7 @@ Data::BitStream::Base - A Role implementing the API for Data::BitStream
 
 =head1 SYNOPSIS
 
-  use Moose;
+  use Moo;
   with 'Data::BitStream::Base';
 
 =head1 DESCRIPTION
@@ -789,7 +792,7 @@ reading.  Methods for read such as
 C<read>, C<get>, C<skip>, C<rewind>, C<skip>, and C<exhausted>
 are not allowed while writing.  Methods for write such as
 C<write> and C<put>
-are not allowed while reading.  
+are not allowed while reading.
 
 The C<write_open> and C<erase_for_write> methods will set writing to true.
 The C<write_close> and C<rewind_for_read> methods will set writing to false.
@@ -797,6 +800,31 @@ The C<write_close> and C<rewind_for_read> methods will set writing to false.
 The read/write distinction allows implementations more freedom in internal
 caching of data.  For instance, they can gather writes into blocks.  It also
 can be helpful in catching mistakes such as reading from a target stream.
+
+=item B< mode >
+
+The stream mode.  Especially useful when given a file.  The mode may be one of
+
+  r    (read)
+  ro   (readonly)
+  w    (write)
+  wo   (writeonly)
+  rdwr (readwrite)
+  a    (append)
+
+=item B< file >
+
+The name of a file to read or write (depending on the mode).
+
+=item B< fheaderlines >
+
+Only applicible when reading a file.  Indicates how many header lines exist
+before the data.
+
+=item B< fheader >
+
+When writing a file, this is the header to write before the data.
+When reading a file, this will be set to the header, if fheaderlines was given.
 
 =back
 
@@ -902,7 +930,7 @@ These methods are only valid while the stream is in writing state.
 
 =item B< write($bits, $value) >
 
-Writes C<$value> to the stream using C<$bits> bits.  
+Writes C<$value> to the stream using C<$bits> bits.
 C<$bits> must be between C<1> and C<maxbits>, unless C<value> is 0 or 1, in
 which case C<bits> may be larger than C<maxbits>.
 

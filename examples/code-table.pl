@@ -2,14 +2,13 @@
 use strict;
 use warnings;
 use FindBin;  use lib "$FindBin::Bin/../lib";
+use Moo::Role qw/apply_roles_to_object/;
 use Data::BitStream;
-use Data::BitStream::Code::BoldiVigna;
 use Data::BitStream::Code::Escape;
 
 sub new_stream {
   my $stream = Data::BitStream->new();
-  Data::BitStream::Code::BoldiVigna->meta->apply($stream);
-  Data::BitStream::Code::Escape->meta->apply($stream);
+  Moo::Role->apply_roles_to_object($stream, qw/Data::BitStream::Code::Escape/);
   return $stream;
 }
 
