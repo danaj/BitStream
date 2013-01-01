@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Escape::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Escape::VERSION = '0.01';
+  $Data::BitStream::Code::Escape::VERSION = '0.02';
 }
 
 our $CODEINFO = [ { package   => __PACKAGE__,
@@ -49,7 +49,17 @@ sub _find_best_pair {
   # Determine how far to look in the basis
   my $maxbasis = 0;
   $maxbasis+=100 while exists $p->[$maxbasis+101] && $val > $p->[$maxbasis+100];
-  $maxbasis++    while exists $p->[$maxbasis+  1] && $val > $p->[$maxbasis];
+  $maxbasis+=10  while exists $p->[$maxbasis+ 11] && $val > $p->[$maxbasis+ 10];
+  $maxbasis++    while exists $p->[$maxbasis+  1] && $val > $p->[$maxbasis    ];
+  # Or we could do binary search:
+  #  my $lo = 0;
+  #  my $hi = $#$p;
+  #  while ($lo < $hi) {
+  #    my $mid = int(($lo + $hi) / 2);
+  #    if ($p->[$mid] <= $val) { $lo = $mid+1; }
+  #    else                    { $hi = $mid; }
+  #  }
+  #  my $maxbasis = $lo;
 
   my @best_pair;
   my $best_pair_len = 100000000;
@@ -247,254 +257,182 @@ sub get_additive_seeded {
 ##########  Support code for Goldbach codes
 
 my $expand_primes_sub;
-my $prime_test_sub;
 
-# Performance:
+# Performance options, in order:
 #
-#    1. Data::BitStream::XS
+#    1. Install Data::BitStream::XS.
 #
-#       Whether used directly or seamlessly routed via BLVec, this is by far
-#       the fastest solution.  20-100x faster than the others.  Parts:
+#       Whether you use it directly or install it and let Data::BitStream
+#       use it behind the curtains, this is BY FAR the best solution.
+#       20-50x faster overall.
 #
-#        - fast prime basis formation (about 2x for large number encoding).
+#    2. Install Math::Prime::Util.
 #
-#        - fast best-pair search (huge speedup for large number encoding).
+#       Fast prime basis formation.  If you're installing modules, you may as
+#       well install DBXS though, as it gets you much more.  With large codes
+#       this can be 1.5x faster.
 #
-#        - generic coding speedup similar to XS effect on other codes.
+#    3. Use this pure perl code.
 #
-#    2. Math::Prime::XS or another XS module from CPAN.
+# There really are three parts that let one efficiently produce Goldbach codes
+# for large inputs.
 #
-#       About a 2x speedup for large numbers (e.g. >100k), almost no change
-#       for smaller (e.g. less than 64k) numbers.  This radically speeds up
-#       the Goldbach basis generation, but does nothing for the best-pair
-#       search.
+#    - Fast prime basis formation.  Both options 1 and 2 will do this well.
+#      Since switching to a segmented sieve in Perl, this isn't much of a
+#      bottleneck any more.  Version 0.01 of this module was MUCH slower.
 #
-#    3. Pure Perl (this module)
+#    - Fast best-pair search.  Doing this in Data::BitStream::XS is a 10-50x
+#      speedup for large numbers.  For very large numbers (over 32-bit), a
+#      different algorithm would be needed, as that module uses the normal
+#      array scan method.  Honestly these codes were meant for tiny inputs.
 #
-# Searching for all sum pairs through a large array (e.g. 1.5M primes for
-# n=10_000_000) is not going to be very fast unless a different implementation
-# is used (massivily parallel such as GPU would map well, as would using
-# extra memory to store the best codes and working sums).  If encoding speed
-# is a goal, then another code is recommended.
+#    - Generic coding speedup.  Having the XS module installed gives a 10-100x
+#      reduction in overhead.  This will have a big impact if inserting many
+#      small codes.
 #
-# In terms of raw performance generating primes, I benchmarked:
+# For those that care, when I measured in 2011 and 2012, the speediest
+# modules for native int were:
 #
-# Small ranges (2 to 1k, 1k+1 to 10k, 10k+1 to 100k, 100k+1 to 1M):
+#   Math::Prime::Util        fast and includes segmented sieve
+#   Data::BitStream::XS      fast and includes segmented sieve
+#   Math::Prime::FastSieve   fast but only if you start near 2.
+#   Math::Prime::XS          decent, but very slow for inputs > 2**25
+#   Pure Perl (sieve)        reasonably fast, but nothing like top 3
+#   Math::Primality          decent for very small ranges, super slow in general
+#   Pure Perl (trial)        very slow
 #
-#    1260/s   Data::BitStream::XS        0.06 (simple SoE)
-#    1259/s   Math::Prime::FastSieve     0.10
-#    1172/s   Data::BitStream::XS        0.06 (SoE using wheel 30)
-#    1062/s   Math::Prime::FastSieve     0.09
-#     987/s   Math::Prime::XS            0.26
-#     155/s   Data::BitStream::XS        0.06 (trial)
-#       7/s   Pure Perl (trial)          0.05
-#       1/s   Math::Primality            0.04
-#
-# Small base, big range (2 to 10M):
-#
-#    18.2/s  Data::BitStream::XS        0.06 (SoE using wheel 30)
-#    15.2/s  Data::BitStream::XS        0.06 (simple SoE)
-#    15.1/s  Math::Prime::FastSieve     0.10
-#    12.5/s  Math::Prime::FastSieve     0.09
-#    11.9/s  Math::Prime::XS            0.26
-#     0.3/s  Data::BitStream::XS        0.06 (trial)
-#     0.01/s Pure Perl (trial)          0.05
-#      .01/s Math::Primality            0.04
-#
-# Large base, small range (1000M to 1000M+1000):
-#
-#     .0036s Data::BitStream::XS        0.06 (trial)
-#     .0120s Math::Primality            0.04
-#     .0805s Pure Perl (trial)          0.05
-#    1.97s   Data::BitStream::XS        0.06 (SoE using wheel 30)
-#    4.01s   Data::BitStream::XS        0.06 (simple SoE)
-#    5.29s   Math::Prime::FastSieve     0.10
-#    9.15s   Math::Prime::FastSieve     0.09
-#   17.6 s   Math::Prime::XS            0.26
-#
-# Notes:
-#
-#   These are number of iterations of the test per second.  So for the big
-#   range test that indicates T/s, the test completes in 1/T seconds.
-#
-#   For big ranges, proper prime sieving programs like primesieve 3.6 and yafu
-#   are an order of magnitude faster.  primegen and TOS's segmented siever
-#   are also a decent amount faster.  Most of these are also far more efficient
-#   when dealing with a small range with a large base.  For these programs,
-#   "large" typically means 10^16 or higher, while the tests I'm writing are
-#   for much smaller bases (10^6 - 10^10)
-#
-#   Math::Primality is really specializing in very large numbers (>2^64).
-#
-#   Math::Prime::FastSieve and Data::BitStream::XS could be a bit faster on
-#   the small ranges test if they were allowed to sieve the whole range once,
-#   but that really doesn't match the way we use the functions.
-#
-#   Math::Primality, Pure Perl trial, and Data::BitStream::XS trial do trial
-#   division; the other versions uses sieves.  Trial division works out well
-#   if the base is very large range is very small.  It also uses no memory.
-#   It is horrible for large ranges.  A segmented sieve would be a good
-#   compromise.
-#
-#   Data::BitStream::XS's default sieve uses 8 bits for each 30 numbers.
-#   Data::BitStream::XS's simple sieve uses 15 bits for each 30 numbers.
-#   Math::Prime::XS 0.26 also uses 15 bits per 30 numbers.
-#   Math::Prime::FastSieve 0.10 and earlier use 30 bits for each 30 numbers.
-#
-# The end result of all this is as described in the first paragraph.  Using
-# the Pure Perl implementation is fine for small values, but will be quite
-# slow as the values grow (e.g. 1M).  Switching to any of the fast prime
-# generators will double or more the speed.  Using DBXS is 20-100x faster.
+# If you want much larger primes, the standalone programs primesieve, yafu,
+# primegen, and TOS's codes are better options.  Math::Prime::Util is the
+# only thing close on CPAN -- it's pretty comparable in prime processing to all
+# those but primesieve, which is in a league of its own.  This doesn't include
+# proprietary code used by Tomás Oliveira e Silva, INRIA, CWI, BSI, etc.
 
-if (eval {require Data::BitStream::XS; Data::BitStream::XS->import(qw(primes is_prime)); 1;}) {
-
-  $expand_primes_sub = sub {
-    my $p = shift;
-    my $maxval = shift;
-    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
-      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
-      my $n = ($maxval > -6)  ?  6  :  -$maxval;
-      $n++;   # Because we skip 2 in our basis.
-      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
-    }
-
-    # We want to ensure there is a prime >= $maxval on our list.
-    # Use maximal gap, so this loop ought to run exactly once.
-    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
-    while ($p->[-1] < $maxval) {
-      push @{$p}, @{primes($p->[-1]+1, $maxval+$adder)};
-      $adder *= 2;  # Ensure success
-    }
-    1;
-  };
-  $prime_test_sub = sub { is_prime(shift); };
-
-} elsif (eval {require Math::Prime::FastSieve; Inline->init(); 1;}) {
-
-  my $fs_sieve;
-  my $fs_size;
-  $expand_primes_sub = sub {
-    my $p = shift;
-    my $maxval = shift;
-
-    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
-      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
-      my $n = ($maxval > -6)  ?  6  :  -$maxval;
-      $n++;   # Because we skip 2 in our basis.
-      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
-    }
-
-    # We want to ensure there is a prime >= $maxval on our list.
-    # Use maximal gap, so this loop ought to run exactly once.
-    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
-    while ($p->[-1] < $maxval) {
-      if ( (!defined $fs_size) || ($fs_size < ($maxval+$adder)) ) {
-        $fs_size = $maxval + $adder + 10000;
-        undef $fs_sieve;
-        $fs_sieve = Math::Prime::FastSieve::Sieve->new( $fs_size );
-      }
-      push @{$p}, @{$fs_sieve->ranged_primes($p->[-1]+1, $maxval+$adder)};
-      $adder *= 2;  # Ensure success
-    }
-    1;
-  };
-  $prime_test_sub = sub { $fs_sieve->isprime(shift); };
-
-} elsif (eval {require Math::Prime::XS; Math::Prime::XS->import(qw(primes is_prime)); 1;}) {
+if (eval {require Math::Prime::Util; Math::Prime::Util->import(qw(primes nth_prime_upper next_prime)); 1;}) {
 
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
 
-    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
-      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
-      my $n = ($maxval > -6)  ?  6  :  -$maxval;
-      $n++;   # Because we skip 2 in our basis.
-      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
-    }
+    $maxval = Math::Prime::Util::nth_prime_upper(-$maxval) if $maxval < 0;
+    $maxval += 100;
 
-    # We want to ensure there is a prime >= $maxval on our list.
-    # Use maximal gap, so this loop ought to run exactly once.
-    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
-    while ($p->[-1] < $maxval) {
-      push @{$p}, primes($p->[-1]+1, $maxval+$adder);
-      $adder *= 2;  # Ensure success
-    }
+    push @$p, @{primes($p->[-1]+1, $maxval)};
+    push @$p, next_prime($p->[-1]) if $p->[-1] < $maxval;
     1;
   };
-  $prime_test_sub = sub { is_prime(shift); };
 
 } else {
-  # Next prime code based on Howard Hinnant's Stackoverflow implementation 6.
-  # Uses wheel factorization for performance.  If you have any sort of
-  # reasonable range you're asking for, a sieve is faster, and for larger
-  # ranges it is much, much faster.  Note that this is an order of magnitude
-  # slower than any XS code, and for a range of 2 - 1_000_000 it is over 300x
-  # slower than the XS sieves.
 
-  sub _is_prime {   # Note:  assumes n is not divisible by 2, 3, or 5!
-    my $x = shift;
-    my $q;
-    # Quick loop for small prime divisibility
-    foreach my $i (7, 11, 13, 17, 19, 23, 29) {
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);
-    }
-    # Unrolled mod-30 loop
-    my $i = 31;
-    while (1) {
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 4;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 6;
-      $q = int($x/$i); return 1 if $q < $i; return 0 if $x == ($q*$i);  $i += 2;
-    }
-    1;
-  }
+sub _dj_pp_string_sieve {
+  my($end) = @_;
+  return '0' if $end < 2;
+  return '1' if $end < 3;
+  $end-- if ($end & 1) == 0;
+  my $s_end = $end >> 1;
 
-  # Return the next prime larger than some integer.
-  # Works just like Math::Primality::next_prime() and DBXS::next_prime().
-  my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
-  sub _next_prime {
-    my $x = shift;
-    if ($x <= 67) {
-      return (2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,
-              23,23,23,23,29,29,29,29,29,29,31,31,37,37,37,37,37,
-              37,41,41,41,41,43,43,47,47,47,47,53,53,53,53,53,53,
-              59,59,59,59,59,59,61,61,67,67,67,67,67,67,71)[$x];
+  my $whole = int( ($end>>1) / 15);  # prefill with 3 and 5 marked
+  my $sieve = '100010010010110' . '011010010010110' x $whole;
+  substr($sieve, ($end>>1)+1) = '';
+  my ($n, $limit) = ( 7, int(sqrt($end)) );
+  while ( $n <= $limit ) {
+    for (my $s = ($n*$n) >> 1; $s <= $s_end; $s += $n) {
+      substr($sieve, $s, 1) = '1';
     }
-    $x += 1;
-    my $k0 = int($x/30);
-    my $in = 0;  $in++ while ($x-$k0*30) > $_prime_indices[$in];
-    my $n = 30 * $k0 + $_prime_indices[$in];
-    while (!_is_prime($n)) {
-      if (++$in == 8) {  $k0++; $in = 0;  }
-      $n = 30 * $k0 + $_prime_indices[$in];
-    }
-    $n;
+    do { $n += 2 } while substr($sieve, $n>>1, 1);
   }
+  return \$sieve;
+}
+sub _dj_pp_segment_sieve {
+  my($beg,$end) = @_;
+  my $range = int( ($end - $beg) / 2 ) + 1;
+  # Prefill with 3 and 5 already marked, and offset to the segment start.
+  my $whole = int( ($range+14) / 15);
+  my $startp = ($beg % 30) >> 1;
+  my $sieve = substr("011010010010110", $startp) . "011010010010110" x $whole;
+  # Set 3 and 5 to prime if we're sieving them.
+  substr($sieve,0,2) = "00" if $beg == 3;
+  substr($sieve,0,1) = "0"  if $beg == 5;
+  # Get rid of any extra we added.
+  substr($sieve, $range) = '';
+
+  # If the end value is below 7^2, then the pre-sieve is all we needed.
+  return \$sieve if $end < 49;
+
+  my $limit = int(sqrt($end)) + 1;
+  # For large value of end, it's a huge win to just walk primes.
+  my $primesieveref = _dj_pp_string_sieve($limit);
+  my $p = 7-2;
+  foreach my $s (split("0", substr($$primesieveref, 3), -1)) {
+    $p += 2 + 2 * length($s);
+    my $p2 = $p*$p;
+    last if $p2 > $end;
+    if ($p2 < $beg) {
+      $p2 = int($beg / $p) * $p;
+      $p2 += $p if $p2 < $beg;
+      $p2 += $p if ($p2 % 2) == 0;   # Make sure p2 is odd
+    }
+    # With large bases and small segments, it's common to find we don't hit
+    # the segment at all.  Skip all the setup if we find this now.
+    if ($p2 <= $end) {
+      # Inner loop marking multiples of p
+      # (everything is divided by 2 to keep inner loop simpler)
+      my $fend = ($end - $beg) >> 1;
+      for (my $fp2  = ($p2  - $beg) >> 1; $fp2 <= $fend; $fp2 += $p) {
+        substr($sieve, $fp2, 1) = '1';
+      }
+    }
+  }
+  \$sieve;
+}
+sub _dj_pp_sieve {
+  my($low, $high) = @_;
+
+  my $sref = [];
+  return $sref if ($low > $high) || ($high < 2);
+  push @$sref, 2  if ($low <= 2) && ($high >= 2);
+  push @$sref, 3  if ($low <= 3) && ($high >= 3);
+  push @$sref, 5  if ($low <= 5) && ($high >= 5);
+  $low = 7 if $low < 7;
+  $low++ if ($low % 2) == 0;
+  $high-- if ($high % 2) == 0;
+  return $sref if $low > $high;
+
+  if ($low == 7) {
+    my $sieveref = _dj_pp_string_sieve($high);
+    my $n = $low - 2;
+    foreach my $s (split("0", substr($$sieveref, 3), -1)) {
+      $n += 2 + 2 * length($s);
+      push @$sref, $n if $n <= $high;
+    }
+  } else {
+    my $sieveref = _dj_pp_segment_sieve($low,$high);
+    my $n = $low - 2;
+    foreach my $s (split("0", $$sieveref, -1)) {
+      $n += 2 + 2 * length($s);
+      push @$sref, $n if $n <= $high;
+    }
+  }
+  $sref;
+}
 
   $expand_primes_sub = sub {
     my $p = shift;
     my $maxval = shift;
-    if ($maxval >= 0) {
-      push @{$p}, _next_prime($p->[-1]) while $p->[-1] < $maxval;
-    } else {
-      my $maxindex = -$maxval;
-      push @{$p}, _next_prime($p->[-1]) while !defined $p->[$maxindex];
+    if ($maxval < 0) {     # We need $p->[-$maxval] defined.
+      # Inequality:  p_n  <  n*ln(n)+n*ln(ln(n)) for n >= 6
+      my $n = ($maxval > -6)  ?  6  :  -$maxval;
+      $n++;   # Because we skip 2 in our basis.
+      $maxval = int($n * log($n) + $n * log(log($n))) + 1;
+    }
+
+    # We want to ensure there is a prime >= $maxval on our list.
+    # Use maximal gap, so this loop ought to run exactly once.
+    my $adder = ($maxval <= 0xFFFFFFFF)  ?  336  :  2000;
+    while ($p->[-1] < $maxval) {
+      push @{$p}, @{_dj_pp_sieve($p->[-1]+1, $maxval+$adder)};
+      $adder *= 2;  # Ensure success
     }
     1;
-  };
-
-  $prime_test_sub = sub {
-    my $x = shift;
-    my $q;
-    foreach my $i (2, 3, 5) {
-      $q = int($x/$i);  return 1 if $q < $i;  return 0 if $x == ($q*$i);
-    }
-    _is_prime($x);
   };
 }
 
@@ -621,84 +559,6 @@ sub get_goldbach_g2 {
 }
 
 
-
-##########  Example of using a tied array
-
-#package Data::BitStream::Code::Additive::PrimeArray;
-#use Tie::Array;
-
-# ... _isprime() and _next_prime()
-
-#sub TIEARRAY {
-#  my $class = shift;
-#  if (@_) {
-#    croak "usage: tie ARRAY, '" . __PACKAGE__ . "";
-#  }
-#  return bless {
-#    ARRAY => [1, 3, 5, 7, 11, 13, 17, 19, 23, 29],
-#  }, $class;
-#}
-#sub STORE { confess "You cannot write to the prime array"; }
-#sub DELETE { confess "You cannot write to the prime array"; }
-#sub STORESIZE {
-#  my $self = shift;
-#  my $count = shift;
-#  my $cursize = $self->FETCHSIZE();
-#  my $curprime = $self->{ARRAY}->[$cursize-1];
-#  if ($count > $cursize) {
-#    foreach my $i ($cursize .. $count-1) {
-#      $curprime = _next_prime($curprime+2);
-#      $self->{ARRAY}->[$i] = $curprime;
-#    }
-#  } else {
-#    foreach (0 .. $cursize - $count - 2 ) {
-#      pop @{$self->{ARRAY}};
-#    }
-#  }
-#}
-#sub FETCH {
-#  my $self = shift;
-#  my $index = shift;
-#  $self->STORESIZE($index+1) if $index >= scalar @{$self->{ARRAY}};
-#  $self->{ARRAY}->[$index];
-#}
-#sub FETCHSIZE {
-#  my $self = shift;
-#  scalar @{$self->{ARRAY}};
-#}
-#sub EXISTS {
-#  my $self = shift;
-#  my $index = shift;
-#  $self->STORESIZE($index+1) unless exists $self->{ARRAY}->[$index];
-#  1;
-#}
-#sub EXTEND {
-#  my $self = shift;
-#  my $count = shift;
-#  $self->STORESIZE( $count );
-#}
-#
-#package Data::BitStream::Code::Additive;
-#
-#my @_prime_basis;
-#tie @_prime_basis, 'Data::BitStream::Code::Additive::PrimeArray';
-#
-#sub put_goldbach_g1 {
-#  my $self = shift;
-#  $self->error_stream_mode('write') unless $self->writing;
-#
-#  $self->put_additive(\@_prime_basis, map { ($_+1)*2 } @_);
-#}
-#sub get_goldbach_g1 {
-#  my $self = shift;
-#  $self->error_stream_mode('read') if $self->writing;
-#
-#  my @vals = map { int($_/2)-1 }  $self->get_additive(\@_prime_basis, @_);
-#  wantarray ? @vals : $vals[-1];
-#}
-
-##########  End of tied array example
-
 no Moose::Role;
 1;
 
@@ -721,11 +581,9 @@ A role written for L<Data::BitStream> that provides get and set methods for
 Additive codes.  The role applies to a stream object.
 
 If you use the Goldbach codes for inputs more than ~1000, I highly recommend
-installing L<Data::BitStream::XS> for better performance.  You can get about
-2x better performance by using L<Math::Prime::FastSieve> or L<Math::Prime::XS>
-or just the prime sieving from L<Data::BitStream::XS>.  Using the latter for
-the codes themselves results in another 100x or so performance improvement for
-large values.
+installing L<Data::BitStream::XS> for better performance.  While these codes
+were not designed for large inputs, they work fine, however at large
+computational costs.
 
 
 =head1 EXAMPLES
@@ -782,7 +640,7 @@ code read; in array context it returns an array of all codes read.
 
 Insert one or more values as Goldbach G2 codes.  Returns 1.  Uses a different
 coding than G1 that should yield slightly smaller codes for large values.  They
-will also be faster to encode and decode.
+will also be almost twice as fast to encode and decode.
 
 =item B< get_goldbach_g2() >
 
@@ -865,9 +723,8 @@ defined as a non-negative integer.
 
 Both the basis and seed arrays are passed as array references.  The basis
 array may be modified if a sub is given (since its job is to expand the basis).
-
-You can set up a tied array, and example code exists in the source for this.
-In general this will be slower than using a native array plus expansion subs.
+It is possible to use a tied array as the basis, but using an expansion
+callback sub is typically faster.
 
 =head2 Required Methods
 

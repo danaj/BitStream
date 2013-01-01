@@ -5,6 +5,8 @@ Revision history for Perl extension Data::BitStream.
 	  conflicts, and Moo wasn't a clean change.  Arguably Moo is a better
 	  fit since in theory it supports everything needed.
 	- Remove some Unicode characters that snuck into references.
+	- Much faster primes for big Goldbach codes.  DBXS is still ~30x
+	  faster overall, but almost all of that is the pair search.
 
 0.06   28 May 2012
 	- Make all tests numbered.

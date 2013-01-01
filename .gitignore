@@ -1,0 +1,6 @@
+Data-BitStream-*.tar.gz
+Makefile
+Makefile.old
+MYMETA.*
+blib*
+pm_to_blib
