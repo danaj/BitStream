@@ -97,6 +97,7 @@ sub is_universal {
   return 0;
 }
 
+# We should add BER and Varint, but XS doesn't support them yet.
 sub encoding_list {
   my @e = qw|
               Unary Unary1 Gamma Delta Omega Fib Fib(3)
@@ -132,7 +133,8 @@ my %esubs = (
   'omega'  => sub { my $stream=shift; my $p=shift; $stream->put_omega(@_) },
   'levenstein'=>sub{my $stream=shift; my $p=shift; $stream->put_levenstein(@_)},
   'evenrodeh'=>sub{ my $stream=shift; my $p=shift; $stream->put_evenrodeh(@_) },
-  'fib'    => sub { my $stream=shift; my $p=shift; $stream->put_fib(@_) },
+  'ber'    => sub { my $stream=shift; my $p=shift; $stream->put_BER(@_) },
+  'varint' => sub { my $stream=shift; my $p=shift; $stream->put_varint(@_) },
   'fib'    => sub { my $stream=shift; my $p=shift;
                     if (defined $p) { $stream->put_fibgen($p,@_); }
                     else            { $stream->put_fib(@_);       } },
@@ -167,6 +169,8 @@ my %dsubs = (
   'omega'  => sub { my $stream=shift; my $p=shift; $stream->get_omega(@_) },
   'levenstein'=>sub{my $stream=shift; my $p=shift; $stream->get_levenstein(@_)},
   'evenrodeh'=>sub{ my $stream=shift; my $p=shift; $stream->get_evenrodeh(@_) },
+  'ber'    => sub { my $stream=shift; my $p=shift; $stream->get_BER(@_) },
+  'varint' => sub { my $stream=shift; my $p=shift; $stream->get_varint(@_) },
   'fib'    => sub { my $stream=shift; my $p=shift;
                     if (defined $p) { $stream->get_fibgen($p,@_); }
                     else            { $stream->get_fib(@_);       } },

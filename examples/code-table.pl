@@ -26,12 +26,14 @@ sub string_of {
   elsif ($encoding eq 'lev')    { $stream->put_levenstein($d);     }
   elsif ($encoding =~ /bvzeta/) { $stream->put_boldivigna($p, $d); }
   elsif ($encoding =~ /baer/)   { $stream->put_baer($p, $d); }
+  elsif ($encoding =~ /ber/)    { $stream->put_BER($p, $d); }
   elsif ($encoding =~ /escape/) { $stream->put_escape([split('-',$p)],$d); }
   elsif ($encoding =~ /sss/)    {$stream->put_startstepstop([split('-',$p)],$d)}
   elsif ($encoding =~ /ss/)     { $stream->put_startstop([split('-',$p)],$d); }
   elsif ($encoding =~ /eg/)     { $stream->put_expgolomb($p, $d);  }
   elsif ($encoding =~ /gol/)    { $stream->put_golomb($p, $d);     }
   elsif ($encoding =~ /rice/)   { $stream->put_rice($p, $d);       }
+  elsif ($encoding =~ /varint/) { $stream->put_varint($p, $d);     }
   else  { die "Unknown encoding: $encoding"; }
   my $str = $stream->to_string();
   $str;

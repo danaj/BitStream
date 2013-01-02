@@ -831,6 +831,13 @@ etc.
 
 =head1 SEE ALSO
 
+The L<Data::Buffer> module has some similarities, and may be easier to use if
+your structure maps directly to typical C structs.  The main feature it has
+that isn't replicated here is the template functionality.  The primary
+difference is L<Data::BitStream> allows arbitrary bit lengths (it isn't byte
+oriented), and of course all the different codes.  It also allows direct
+storage of 64-bit integers, and bigints (using binary strings).
+
 =over 4
 
 =item L<Data::BitStream::Base>
@@ -882,7 +889,7 @@ Dana Jacobsen <dana@acm.org>
 
 =head1 COPYRIGHT
 
-Copyright 2011-2012 by Dana Jacobsen <dana@acm.org>
+Copyright 2011-2013 by Dana Jacobsen <dana@acm.org>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 

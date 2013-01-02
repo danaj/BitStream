@@ -15,12 +15,6 @@
 
 - Export
 
-- Would be nice to do Moo/Mouse/Moose interchangably.  Any::Mouse, basically.
-  mst says he's moving Moo toward a Mouse replacement, but at the moment there
-  are a lot of changes to the module source between the two.  See:
-
-    https://gist.github.com/1259851
-
 - text code needs some redoing
 
 - tie to a file to avoid holding everything in memory.
@@ -32,6 +26,13 @@
 
 - test for read_open.  Should read_open / write_open be private?  Should they
   take a hash like new?  (e.g. write_open( file=>'foo') )
+
+- Change test library and usage to get an encoding list by stream, rather than
+  a global list.
+
+- Add BER and Varint to standard test list.
+  This requires encoding lists by stream (the previous TODO).
+
 
 CODES:
 

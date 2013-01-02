@@ -27,6 +27,8 @@ my @encodings = qw|
   gamma
   bvzeta(2)
   fib
+  ber
+  varint
   deltagol(11)
   arice(0)
   omegagol(11)

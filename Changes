@@ -8,6 +8,7 @@ Revision history for Perl extension Data::BitStream.
 	- Remove some Unicode characters that snuck into references.
 	- Much faster primes for big Goldbach codes.  DBXS is still ~30x
 	  faster overall, but almost all of that is the pair search.
+        - Add BER and Varint codes.
 
 0.06   28 May 2012
 	- Make all tests numbered.

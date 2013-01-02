@@ -27,6 +27,8 @@ with 'Data::BitStream::Base',
      'Data::BitStream::Code::Additive',
      'Data::BitStream::Code::Comma',
      'Data::BitStream::Code::Taboo',
+     'Data::BitStream::Code::BER',
+     'Data::BitStream::Code::Varint',
      'Data::BitStream::Code::StartStop';
 
 has '_str' => (is => 'rw', default => sub{''});
