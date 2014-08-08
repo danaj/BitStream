@@ -1,16 +1,14 @@
-Data-BitStream version 0.07
-===========================
+Data::BitStream version 0.07
 
 A Moo class providing read/write access to bit streams.  This includes many
 integer coding methods as well as straightforward ways to implement new codes.
 
 Bit streams are often used in data compression and in embedded products where
-memory is at a premium.  While this Perl implementation may not be appropriate
-for many of these applications (speed and Perl), it can be very useful for
-prototyping and experimenting with different codes.
+memory is at a premium.  Using variable length codes allows high performance
+compression of integer data.
 
 The Data::BitStream::XS module is also available, and is a near drop-in
-replacement for this module, though it does not use Moose.  The Data::BitStream
+replacement for this module, though it does not use Moo.  The Data::BitStream
 module will internally use the XS module if it is found, giving a lot of the
 performance benefit without any other changes necessary.
 
@@ -19,7 +17,7 @@ SYNOPSIS
 
   use Data::BitStream;
   my $stream = Data::BitStream->new;
-  $stream->put_gamma($_) for (1 .. 20);
+  $stream->put_gamma($_) for 1..20;
   $stream->rewind_for_read;
   my @values = $stream->get_gamma(-1);
 
@@ -52,8 +50,7 @@ installed is as fast as Mouse for some operations, but not all.  If speed
 is important, install Data::BitStream::XS.  If speed is more important than
 extensibility, use Data::BitStream::XS directly.
 
-I have tested this using perl versions 5.6.2, 5.8.0, 5.8.9, 5.10.1, 5.12.4,
-5.14.1, 5.15.2, 5.16.0, 5.16.2, and 5.17.5.
+I have tested this using perl versions 5.6.2 to 5.20.0.
 
 It works with Perl 5.6.2, with a caveat.  On 32-bit O/S, 64-bit Perl can have
 broken arithmetic (two unequal 64-bit numbers will compare as equal).  We force

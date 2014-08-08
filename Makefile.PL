@@ -7,9 +7,11 @@ WriteMakefile1(
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
-    PREREQ_PM => {
+    TEST_REQUIRES => {
                      # I'm using subtest.  Could go back to 0.82 without it.
                      'Test::More'       => '0.94',
+                     },
+    PREREQ_PM => {
                      # Using just the import method of Exporter
                      'Exporter'         => '5.57',
                      'Carp'             => 0,
@@ -31,22 +33,25 @@ WriteMakefile1(
 
     META_MERGE => {
                     resources  => {
-                      homepage   => 'https://github.com/danaj/BitStream/tree',
-                      repository => 'git://github.com/danaj/BitStream.git',
+                      license    => [ 'http://dev.perl.org/licenses/' ],
+                      homepage   => 'https://github.com/danaj/BitStream',
+                      repository => {
+                        url  => 'https://github.com/danaj/BitStream',
+                      },
                     },
-                    recommends => { 'Data::BitStream::XS' => 0.06, },
+                    prereqs => {
+                      runtime => {
+                        recommends => { 'Data::BitStream::XS' => 0.06, },
+                      },
+                    },
                     optional_features => {
                           bitvec =>  {
                               description => 'The Bit::Vector implementation, just for example',
                               requires => { 'Bit::Vector' => 0, },
                           },
-                          mpxs =>  {
+                          mpu =>  {
                               description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
-                              requires => { 'Math::Prime::XS' => 0, },
-                          },
-                          mpfs =>  {
-                              description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
-                              requires => { 'Math::Prime::FastSieve' => 0, },
+                              requires => { 'Math::Prime::Util' => 0, },
                           },
                           release_testing =>  {
                               description => 'Extra modules for author testing',
@@ -72,6 +77,10 @@ sub WriteMakefile1 {
   my $eumm_version = $ExtUtils::MakeMaker::VERSION;
   $eumm_version = eval $eumm_version;
 
+  if ($params{TEST_REQUIRES} and $eumm_version < 6.6303) {
+      $params{BUILD_REQUIRES}={ %{$params{BUILD_REQUIRES} || {}} , %{$params{TEST_REQUIRES}} };
+      delete $params{TEST_REQUIRES};
+  }
   if ($params{BUILD_REQUIRES} and $eumm_version < 6.5503) {
       #EUMM 6.5502 has problems with BUILD_REQUIRES
       $params{PREREQ_PM}={ %{$params{PREREQ_PM} || {}} , %{$params{BUILD_REQUIRES}} };

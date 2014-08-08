@@ -1,5 +1,8 @@
 Revision history for Perl extension Data::BitStream.
 
+0.08    7 Aug 2014
+        - Updates to documentation.
+
 0.07    1 Jan 2013
 	- Change from Mouse to Moo.  Mouse has great performance, but the Perl
 	  community is moving toward Moo/Moose and away from Any:Moose and
