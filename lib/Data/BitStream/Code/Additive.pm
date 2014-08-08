@@ -397,20 +397,13 @@ sub _dj_pp_sieve {
   $high-- if ($high % 2) == 0;
   return $sref if $low > $high;
 
-  if ($low == 7) {
-    my $sieveref = _dj_pp_string_sieve($high);
-    my $n = $low - 2;
-    foreach my $s (split("0", substr($$sieveref, 3), -1)) {
-      $n += 2 + 2 * length($s);
-      push @$sref, $n if $n <= $high;
-    }
-  } else {
-    my $sieveref = _dj_pp_segment_sieve($low,$high);
-    my $n = $low - 2;
-    foreach my $s (split("0", $$sieveref, -1)) {
-      $n += 2 + 2 * length($s);
-      push @$sref, $n if $n <= $high;
-    }
+  my($n, $s, $sieveref) = ($low == 7)
+     ? ($low-2, 3, _dj_pp_string_sieve($high))
+     : ($low-2, 0, _dj_pp_segment_sieve($low,$high));
+  while ( (my $nexts = 1 + index($$sieveref, "0", $s)) > 0 ) {
+    $n += 2 * ($nexts - $s);
+    $s = $nexts;
+    push @$sref, $n;
   }
   $sref;
 }
