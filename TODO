@@ -54,3 +54,6 @@ CODES:
   don't think there is a pressing need to do these.
 
 - Thoughts on Huffman, arithmetic
+
+- Methods should return self, so we could do:
+    say Data::BitStream->new->put_fib(@values)->to_string;

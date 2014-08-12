@@ -16,8 +16,13 @@ can_ok($stream, @methods);
 ok(!$stream->can('has'));
 
 require_ok 'Data::BitStream::Code::Escape';
-Data::BitStream::Code::Escape->meta->apply($stream);
+
+# This works if you have Moose:
+#Data::BitStream::Code::Escape->meta->apply($stream);
+# This works with little old Moo::Role:
 #Moo::Role->apply_roles_to_object($stream, qw/Data::BitStream::Code::Escape/);
+Moo::Role->apply_roles_to_package('Data::BitStream', qw/Data::BitStream::Code::Escape/);
+
 can_ok($stream, 'get_escape', 'put_escape');
 
 done_testing;

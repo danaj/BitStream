@@ -292,31 +292,37 @@ bias estimations and adaptive determination of the parameter for Rice coding.
 =head2 Using a custom encoding method
 
   use Data::BitStream;
-  use Data::BitStream::Code::Escape;
+  Moo::Role->apply_roles_to_package('Data::BitStream',
+     qw/Data::BitStream::Code::Escape/);
 
   my $stream = Data::BitStream->new;
-  Data::BitStream::Code::Escape->meta->apply($stream);
-
-  $stream->put_escape([4,7], 14);      # put 14 with escape code
-
+  $stream->put_escape([4,7], 14, 28, 42, 56);   # Add four values
   $stream->rewind_for_read;
-  my @values = $stream->get_escape([3,7], -1);
+  my @values = $stream->get_escape([4,7], -1);
 
-The escape code is not included by default, so this shows how we use the
-Escape module then apply the role to the stream object.  Now this stream
-understands escape codes.
+The escape code is not included by default, so this shows how we can add it
+to the package.  You can also use C<Moo::Role->apply_roles_to_object> and
+give it a stream object as the first argument, which will apply the role
+just to the single stream.  Alternately, if you have Moose, you can use
+C<Data::BitStream::Code::Escape->meta->apply($stream);> or other MOP
+operations.
 
 Note that if we used the text interface we don't have to do this, as the
 Escape module includes code info that the L<Data::BitStream> module will
 find by default.  This involves an extra lookup to find the method, but
-is convenient: C<$stream->code_put("Escape(4-7)", 14);>.
+is convenient:
+
+  use Data::BitStream;
+  use Data::BitStream::Code::Escape;
+  my $stream = Data::BitStream->new;
+  $stream->code_put("Escape(4-7)", 14, 28, 42, 56);
+  $stream->rewind_for_read;
+  my @values = $stream->code_get("Escape(4-7)", -1);
 
 
 
 
 =head1 METHODS
-
-
 
 
 =head2 CLASS METHODS

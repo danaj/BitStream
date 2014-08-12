@@ -8,8 +8,12 @@ use lib qw(t/lib);
 use BitStreamTest;
 
 # Inspired by http://golf.shinh.org/p.rb?Elias+delta+to+Fibonacci
-# though without golfing (my program is about 175 characters when
-# compacted given the relatively long package and method names).
+# though without golfing --  at 152 characters:
+#
+# use Data::BitStream;$d=Data::BitStream->new;while(<>){chomp;$d->from_string($_);$f=Data::BitStream->new;$f->put_fib($d->get_delta(-1));say$f->to_string}
+#
+# Method composition would help.
+#
 # None of the Perl implementations on that site work on my machine,
 # though this code works fine.
 
