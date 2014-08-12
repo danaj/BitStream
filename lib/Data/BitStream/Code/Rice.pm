@@ -143,7 +143,7 @@ supplied sub) coding.
 
 Note: this is a special case of a C<Golomb(m)> code where C<m = 2^k>.
 
-Rice coding is often preceeded by a step that adapts the parameter to the
+Rice coding is often preceded by a step that adapts the parameter to the
 data seen so far.  Rice's paper encodes 21-pixel prediction blocks using one
 of three codes.  The JPEG-LS LOCO-I algorithm uses a constantly adapting k
 parameter to encode the prediction errors.

@@ -157,7 +157,7 @@ Taboo codes are described in Steven Pigeon's 2001 PhD Thesis as well as his
 paper "Taboo Codes: New Classes of Universal Codes."
 
 The block methods implement a slight modification of the taboo codes, wherein
-zero is encoded as the taboo pattern with no preceeding bits.  This causes no
+zero is encoded as the taboo pattern with no preceding bits.  This causes no
 loss of generality and lowers the bit count for small values.
 
 An example using '11' as the taboo pattern (chunk size C<n=2>):
@@ -181,7 +181,7 @@ generalized Fibonacci codes are a special case of taboo codes (using a taboo
 pattern of all ones and a different bit ordering).  The lengths of the codes
 will be identical in all cases, so it is recommended to use them if possible.
 What unconstrained taboo codes offer over generalized Fibonacci codes is the
-ability to have any ending pattern and having the prefix be lexigraphically
+ability to have any ending pattern and having the prefix be lexicographically
 ordered.  For most purposes these are not important.
 
 =head1 METHODS
