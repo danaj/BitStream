@@ -35,8 +35,13 @@ our $CODEINFO = [ { package   => __PACKAGE__,
 use Moo::Role;
 requires qw(read write);
 
+# Precalculate the lengths for small values.
+my @_agl = (1,3,3,(5)x4,(7)x8,(9)x16,(11)x32,(13)x64,(15)x128,(17)x256);
+sub _push_more_agls { push @_agl, (19)x512,(21)x1024,(23)x2048,(25)x4096,(27)x8192; }
 sub _additive_gamma_len {
-  my $n = shift;
+  my($n) = @_;
+  return $_agl[$n] if $n <= $#_agl;
+  _push_more_agls if $n < 16383;
   my $gammalen = 1;
   $gammalen += 2 while $n >= ((2 << ($gammalen>>1))-1);
   $gammalen;
@@ -65,12 +70,12 @@ sub _find_best_pair {
   my $best_pair_len = 100000000;
   my $i = 0;
   my $j = $maxbasis;
+  my $pi = $p->[$i];
+  my $pj = $p->[$j];
   while ($i <= $j) {
-    my $pi = $p->[$i];
-    my $pj = $p->[$j];
     my $sum = $pi + $pj;
-    if    ($sum < $val) {  $i++;  }
-    elsif ($sum > $val) {  $j--;  }
+    if    ($sum < $val) { $pi = $p->[++$i]; }
+    elsif ($sum > $val) { $pj = $p->[--$j]; }
     else {
       my($p1, $p2) = $pairsub->($i, $j);  # How i,j are stored
       my $glen = _additive_gamma_len($p1) + _additive_gamma_len($p2);
@@ -79,7 +84,7 @@ sub _find_best_pair {
         @best_pair = ($p1, $p2);
         $best_pair_len = $glen;
       }
-      $i++;
+      $pi = $p->[++$i];
     }
   }
   @best_pair;
@@ -110,8 +115,7 @@ sub put_additive {
     # Expand the basis if necessary and possible.
     $sub->($p, $val) if defined $sub  &&  $p->[-1] < $val;
 
-    my @best_pair = _find_best_pair($p, $val,
-                       sub { my $i = shift; my $j = shift;  ($i, $j-$i);  } );
+    my @best_pair = _find_best_pair($p, $val, sub { ($_[0], $_[1]-$_[0]) } );
 
     $self->error_code('range', $val) unless @best_pair;
     $self->put_gamma(@best_pair);
@@ -290,22 +294,11 @@ my $expand_primes_sub;
 #      reduction in overhead.  This will have a big impact if inserting many
 #      small codes.
 #
-# For those that care, when I measured in 2011 and 2012, the speediest
-# modules for native int were:
-#
-#   Math::Prime::Util        fast and includes segmented sieve
-#   Data::BitStream::XS      fast and includes segmented sieve
-#   Math::Prime::FastSieve   fast but only if you start near 2.
-#   Math::Prime::XS          decent, but very slow for inputs > 2**25
-#   Pure Perl (sieve)        reasonably fast, but nothing like top 3
-#   Math::Primality          decent for very small ranges, super slow in general
-#   Pure Perl (trial)        very slow
-#
-# If you want much larger primes, the standalone programs primesieve, yafu,
-# primegen, and TOS's codes are better options.  Math::Prime::Util is the
-# only thing close on CPAN -- it's pretty comparable in prime processing to all
-# those but primesieve, which is in a league of its own.  This doesn't include
-# proprietary code used by Tomás Oliveira e Silva, INRIA, CWI, BSI, etc.
+# You can find lots of benchmarks and results for prime generation in the
+# Math::Prime::Util module.  That module is by far the fastest on CPAN
+# (2012-2014).  Math::Prime::FastSieve is fast enough if you start at 2.
+# For non-Perl solutions, I recommend primesieve -- it is faster than MPU,
+# yafu, primegen, or TOeS's code.
 
 if (eval {require Math::Prime::Util; Math::Prime::Util->import(qw(primes nth_prime_upper next_prime)); 1;}) {
 
@@ -313,7 +306,7 @@ if (eval {require Math::Prime::Util; Math::Prime::Util->import(qw(primes nth_pri
     my $p = shift;
     my $maxval = shift;
 
-    $maxval = Math::Prime::Util::nth_prime_upper(-$maxval) if $maxval < 0;
+    $maxval = nth_prime_upper(-$maxval) if $maxval < 0;
     $maxval += 100;
 
     push @$p, @{primes($p->[-1]+1, $maxval)};
@@ -494,7 +487,7 @@ sub put_goldbach_g2 {
 
     # Encode the even value $val as the sum of two primes
     my @best_pair = _find_best_pair(\@_pbasis, $val,
-                       sub { my $i = shift; my $j = shift;  ($i+1,$j-$i+1); } );
+                       sub { my($i,$j) = @_;  ($i+1,$j-$i+1); } );
 
     $self->error_code('range', $v) unless @best_pair;
     $self->put_gamma(@best_pair);
