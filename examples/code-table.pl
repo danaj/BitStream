@@ -53,6 +53,8 @@ if (1) {
   foreach my $e (3,5,7,9,11,13,15,17,19) {
     printf "%5s  ", "1e$e";
     foreach my $encoding (@encodings) {
+      if ($encoding =~ /\b(unary|unary1|escape|ss|sss)\b/i)
+        { printf " %-11s", ""; next; }
       printf " %-11s", length(string_of($encoding,int(10**$e)))." bits";
     }
     print "\n";
