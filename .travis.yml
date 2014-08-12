@@ -1,15 +1,13 @@
 language: "perl"
 perl:
   - "5.16"
-  - "5.14"
-  - "5.12"
   - "5.10"
 
 #before_script:
 #    - cpanm Moose  Moose::Role  MooseX::Types::Moose
 
 install:
-    - cpanm -v --installdeps --notest --mirror http://cpan.mirrors.travis-ci.org .
+    - cpanm -v --installdeps --notest .
 
 script: "perl Makefile.PL; make test"
 # branches:
