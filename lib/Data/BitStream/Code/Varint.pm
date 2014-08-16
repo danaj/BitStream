@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Varint::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Varint::VERSION   = '0.01';
+  $Data::BitStream::Code::Varint::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,

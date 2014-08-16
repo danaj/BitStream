@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::BLVec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::BLVec::VERSION   = '0.02';
+  $Data::BitStream::BLVec::VERSION   = '0.08';
 }
 
 use Moo;

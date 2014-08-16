@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::MinimalVec::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::MinimalVec::VERSION   = '0.02';
+  $Data::BitStream::MinimalVec::VERSION   = '0.08';
 }
 
 use Moo;

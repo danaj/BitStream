@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Delta::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Delta::VERSION   = '0.01';
+  $Data::BitStream::Code::Delta::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -82,7 +82,7 @@ Data::BitStream::Code::Delta - A Role implementing Elias Delta codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

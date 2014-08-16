@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::ExponentialGolomb::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::ExponentialGolomb::VERSION   = '0.03';
+  $Data::BitStream::Code::ExponentialGolomb::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -48,7 +48,7 @@ Data::BitStream::Code::ExponentialGolomb - A Role implementing Exponential-Golom
 
 =head1 VERSION
 
-version 0.03
+version 0.08
 
 =head1 DESCRIPTION
 

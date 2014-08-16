@@ -4,7 +4,7 @@ use warnings;
 use Carp;
 BEGIN {
   $Data::BitStream::Base::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Base::VERSION   = '0.03';
+  $Data::BitStream::Base::VERSION   = '0.08';
 }
 
 our $CODEINFO = [ { package   => __PACKAGE__,

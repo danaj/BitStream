@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::WordVec::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::WordVec::VERSION = '0.03';
+  $Data::BitStream::WordVec::VERSION = '0.08';
 }
 
 use Moo;

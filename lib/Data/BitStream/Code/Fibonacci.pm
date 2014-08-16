@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Fibonacci::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Fibonacci::VERSION   = '0.04';
+  $Data::BitStream::Code::Fibonacci::VERSION   = '0.08';
 }
 
 our $CODEINFO = [ { package   => __PACKAGE__,
@@ -447,7 +447,7 @@ Data::BitStream::Code::Fibonacci - A Role implementing Fibonacci codes
 
 =head1 VERSION
 
-version 0.04
+version 0.08
 
 =head1 DESCRIPTION
 

@@ -1,4 +1,4 @@
-Data::BitStream version 0.07
+Data::BitStream version 0.08
 
 A Moo class providing read/write access to bit streams.  This includes many
 integer coding methods as well as straightforward ways to implement new codes.
@@ -59,7 +59,7 @@ maxbits to 32 if it looks like it won't work with 64.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011-2013 by Dana Jacobsen <dana@acm.org>
+Copyright (C) 2011-2014 by Dana Jacobsen <dana@acm.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.1 or,

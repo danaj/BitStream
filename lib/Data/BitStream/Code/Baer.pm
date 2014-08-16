@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Baer::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Baer::VERSION   = '0.01';
+  $Data::BitStream::Code::Baer::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -118,7 +118,7 @@ Data::BitStream::Code::Baer - A Role implementing Baer codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

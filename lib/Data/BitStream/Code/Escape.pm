@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Escape::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Escape::VERSION = '0.01';
+  $Data::BitStream::Code::Escape::VERSION = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -112,7 +112,7 @@ Data::BitStream::Code::Escape - A Role implementing Escape codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

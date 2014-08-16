@@ -5,7 +5,7 @@ BEGIN {
   $Data::BitStream::String::AUTHORITY = 'cpan:DANAJ';
 }
 BEGIN {
-  $Data::BitStream::String::VERSION = '0.02';
+  $Data::BitStream::String::VERSION = '0.08';
 }
 
 use Moo;

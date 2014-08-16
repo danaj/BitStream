@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Gamma::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Gamma::VERSION   = '0.01';
+  $Data::BitStream::Code::Gamma::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -103,7 +103,7 @@ Data::BitStream::Code::Gamma - A Role implementing Elias Gamma codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

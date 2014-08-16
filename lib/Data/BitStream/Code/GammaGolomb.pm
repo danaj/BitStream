@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::GammaGolomb::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::GammaGolomb::VERSION   = '0.03';
+  $Data::BitStream::Code::GammaGolomb::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -37,7 +37,7 @@ Data::BitStream::Code::GammaGolomb - A Role implementing Gamma-Golomb codes
 
 =head1 VERSION
 
-version 0.03
+version 0.08
 
 =head1 DESCRIPTION
 

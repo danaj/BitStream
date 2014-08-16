@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Taboo::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Taboo::VERSION = '0.01';
+  $Data::BitStream::Code::Taboo::VERSION = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -146,7 +146,7 @@ Data::BitStream::Code::Taboo - A Role implementing Taboo codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

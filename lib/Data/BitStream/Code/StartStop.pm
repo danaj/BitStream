@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::StartStop::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::StartStop::VERSION   = '0.02';
+  $Data::BitStream::Code::StartStop::VERSION   = '0.08';
 }
 
 our $CODEINFO = [
@@ -209,7 +209,7 @@ Data::BitStream::Code::StartStop - A Role implementing Start/Stop and Start-Step
 
 =head1 VERSION
 
-version 0.02
+version 0.08
 
 =head1 DESCRIPTION
 

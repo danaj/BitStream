@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::BoldiVigna::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::BoldiVigna::VERSION   = '0.01';
+  $Data::BitStream::Code::BoldiVigna::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -147,7 +147,7 @@ Data::BitStream::Code::BoldiVigna - A Role implementing Zeta codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

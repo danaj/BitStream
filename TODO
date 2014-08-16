@@ -57,3 +57,5 @@ CODES:
 
 - Methods should return self, so we could do:
     say Data::BitStream->new->put_fib(@values)->to_string;
+
+- Document BER and Varint

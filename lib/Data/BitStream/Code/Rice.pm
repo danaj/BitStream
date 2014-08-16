@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::Rice::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::Rice::VERSION = '0.02';
+  $Data::BitStream::Code::Rice::VERSION = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -72,7 +72,7 @@ Data::BitStream::Code::Rice - A Role implementing Rice codes
 
 =head1 VERSION
 
-version 0.02
+version 0.08
 
 =head1 DESCRIPTION
 

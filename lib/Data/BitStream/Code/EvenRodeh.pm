@@ -3,7 +3,7 @@ use strict;
 use warnings;
 BEGIN {
   $Data::BitStream::Code::EvenRodeh::AUTHORITY = 'cpan:DANAJ';
-  $Data::BitStream::Code::EvenRodeh::VERSION   = '0.01';
+  $Data::BitStream::Code::EvenRodeh::VERSION   = '0.08';
 }
 
 our $CODEINFO = { package   => __PACKAGE__,
@@ -103,7 +103,7 @@ Data::BitStream::Code::EvenRodeh - A Role implementing Even-Rodeh codes
 
 =head1 VERSION
 
-version 0.01
+version 0.08
 
 =head1 DESCRIPTION
 

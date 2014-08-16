@@ -4,7 +4,7 @@ package Data::BitStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 # Since we're using Moo, things get rather messed up if we try to
 # inherit from Exporter.  Really all we want is the ability to let people
@@ -182,7 +182,7 @@ Data::BitStream - A bit stream class including integer coding methods
 
 =head1 VERSION
 
-version 0.07
+version 0.08
 
 
 =head1 SYNOPSIS
@@ -913,7 +913,7 @@ Dana Jacobsen <dana@acm.org>
 
 =head1 COPYRIGHT
 
-Copyright 2011-2013 by Dana Jacobsen <dana@acm.org>
+Copyright 2011-2014 by Dana Jacobsen <dana@acm.org>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
