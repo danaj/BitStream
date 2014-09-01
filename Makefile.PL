@@ -32,37 +32,26 @@ WriteMakefile1(
                  },
 
     META_MERGE => {
-                    resources  => {
-                      license    => [ 'http://dev.perl.org/licenses/' ],
-                      homepage   => 'https://github.com/danaj/BitStream',
-                      repository => {
-                        url  => 'https://github.com/danaj/BitStream',
-                      },
-                    },
-                    prereqs => {
-                      runtime => {
-                        recommends => { 'Data::BitStream::XS' => 0.06, },
-                      },
-                    },
-                    optional_features => {
-                          bitvec =>  {
-                              description => 'The Bit::Vector implementation, just for example',
-                              requires => { 'Bit::Vector' => 0, },
-                          },
-                          mpu =>  {
-                              description => 'Fast primes for Goldbach codes, if Data::BitStream::XS is not available',
-                              requires => { 'Math::Prime::Util' => 0, },
-                          },
-                          release_testing =>  {
-                              description => 'Extra modules for author testing',
-                              requires => { 'Test::Pod' => 1.41,
-                                            'Test::Pod::Coverage' => 1.08,
-                                            'Test::Perl::Critic' => 0,
-                                            'Test::Kwalitee' => 0,
-                                          },
-                          },
-                    },
-                  },
+               'meta-spec'  => {
+                  version => '2',
+                  url     => 'http://search.cpan.org/perldoc?CPAN::Meta::Spec',
+               },
+               resources  => {
+                 license    => [ 'http://dev.perl.org/licenses/' ],
+                 homepage   => 'https://github.com/danaj/BitStream',
+                 repository => {
+                   url  => 'https://github.com/danaj/BitStream',
+                 },
+               },
+               prereqs => {
+                 runtime => {
+                   recommends => {
+                     'Data::BitStream::XS' => 0.06,
+                     'Math::Prime::Util'   => 0,    # For Goldbach codes
+                   },
+                 },
+               },
+             },
 
     # I have not tested with any version of Perl previous to 5.6.2.  v5.6.2
     # does work, though is forced to 32-bit if it detects 64-bit arithmetic is

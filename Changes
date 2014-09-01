@@ -1,5 +1,8 @@
 Revision history for Perl extension Data::BitStream.
 
+0.09    ?
+        - Update CPAN meta data
+
 0.08    16 Aug 2014
         - Updates to documentation.
         - Goldbach encoding almost 2x faster (sped up pair search).
