@@ -11,7 +11,7 @@ my $error_regex = qr/error-loc\.t/;
 
 require_ok 'Data::BitStream';
 
-my $dbs = new Data::BitStream(mode => 'ro');
+my $dbs = Data::BitStream->new(mode => 'ro');
 
 throws_ok { $dbs->read($dbs->maxbits + 1) } $error_regex, 'read(maxbits + 1) should fail';
 note "Message: $@";
@@ -22,7 +22,7 @@ note "Message: $@";
 
 # I'm not certain if this is the correct behavior, but a read() returns undef
 # if there are exactly zero bytes left in the stream
-$dbs = new Data::BitStream();
+$dbs = Data::BitStream->new();
 $dbs->from_raw("\x00");
 throws_ok { $dbs->read(32) } $error_regex, 'read past EOF should fail';
 note "Message: $@";

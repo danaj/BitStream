@@ -19,7 +19,7 @@ test_case { $dbs->write(1, 0) };
 
 sub test_case(&) {
 	my ($sub) = @_;
-	$dbs = new Data::BitStream();
+	$dbs = Data::BitStream->new();
 	$sub->($dbs);
 	my $bits = $dbs->len;
 	my $expected_length = int(($bits + 7) / 8);
