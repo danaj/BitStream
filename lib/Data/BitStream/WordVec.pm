@@ -396,7 +396,19 @@ sub to_raw {
   my $self = shift;
   $self->write_close;
   my $rvec = $self->_vecref;
-  return $$rvec;
+  my $byte_count = int(($self->len + 7) / 8);
+  # $$rvec may have more or fewer zeroes than is appropriate based on
+  # optimizations
+  return $$rvec if length($$rvec) == $byte_count;
+  if (length($$rvec) > $byte_count) {
+	# return only the first $byte_count bytes 
+	return substr($$rvec, 0, $byte_count);
+  } else {
+	# a more complex case: there are some virtual '0' bits at the end
+	# we need to make them appear here
+	my $zeroes_needed = $byte_count - length($$rvec);
+	return $$rvec . ("\x00" x $zeroes_needed);
+  }
 }
 
 sub from_raw {
