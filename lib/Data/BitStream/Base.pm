@@ -2,6 +2,7 @@ package Data::BitStream::Base;
 use strict;
 use warnings;
 use Carp;
+our @CARP_NOT;
 BEGIN {
   $Data::BitStream::Base::AUTHORITY = 'cpan:DANAJ';
   $Data::BitStream::Base::VERSION   = '0.08';
@@ -316,6 +317,7 @@ sub code_pos_is_set {
 sub error_off_stream {
   my $self = shift;
   my $skipping = shift;
+  local @CARP_NOT = (@CARP_NOT, ref($self));
 
   # Give the skip error only if we were not reading a code.
   if ( (defined $skipping) && (@{$self->_code_pos_array} == 0) ) {
@@ -329,6 +331,7 @@ sub error_off_stream {
 sub error_stream_mode {
   my $self = shift;
   my $type = shift;
+  local @CARP_NOT = (@CARP_NOT, ref($self));
   my $codename = $self->_code_restore_pos();
   $codename = " ($codename)" if $codename ne '';
 
@@ -351,6 +354,7 @@ sub error_code {
   my $self = shift;
   my $type = shift;
   my $text = shift;
+  local @CARP_NOT = (@CARP_NOT, ref($self));
   if ($type eq 'zeroval') {    # Implied text
     $type = 'value';
     $text = 'value must be >= 0';
